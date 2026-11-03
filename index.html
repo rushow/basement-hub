@@ -230,7 +230,7 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
     <div class="card grow" id="calCard">
       <h2><span id="calTitle">Today</span><span id="calUpd" style="letter-spacing:0;text-transform:none;font-weight:400"></span></h2>
       <div class="allday" id="calAllDay"></div>
-      <ul id="calList"><li class="empty" style="border:none">Connect your Google Calendar in ⚙ Settings.</li></ul>
+      <ul id="calList"></ul>
     </div>
     <div class="card" id="cdCard" hidden>
       <h2>Countdowns</h2>
@@ -525,7 +525,7 @@ function evRow(ev, now){
 }
 function renderCalendar(){
   const ul = $('#calList'), ad = $('#calAllDay');
-  if (!cfg.calUrl){ ad.innerHTML=''; ul.innerHTML = '<li class="empty" style="border:none">Connect your Google Calendar in ⚙ Settings.</li>'; $('#calUpd').textContent=''; return; }
+  if (!cfg.calUrl){ ad.innerHTML=''; ul.innerHTML = '<li class="empty" id="calConnect" style="border:none;cursor:pointer"><span style="color:var(--accent);text-decoration:underline">Tap here to connect your Google Calendar</span></li>'; $('#calUpd').textContent=''; return; }
   if (!cal){ ul.innerHTML = '<li class="empty" style="border:none">Loading your calendar…</li>'; return; }
   const now = new Date();
   const allDay = allDayOn(0), today = timedOn(0).filter(ev => ev.e > now);
@@ -1146,6 +1146,11 @@ function applyCfg(){
   renderCountdowns(); renderSec(); renderNews(); if(!focus.running && focus.remain===focus.total) setMode(focus.mode);
 }
 $('#settingsBtn').onclick = () => withPin('Settings', () => { fillSettings(); $('#settingsModal').classList.add('on'); });
+$('#calCard').addEventListener('click', e => {
+  if (!e.target.closest('#calConnect')) return;
+  withPin('Settings', () => { fillSettings(); $('#settingsModal').classList.add('on');
+    setTimeout(() => { const f = $('#sCal'); f.scrollIntoView({block:'center'}); f.focus(); }, 150); });
+});
 $('#closeSettings').onclick = () => { $('#settingsModal').classList.remove('on'); cfg = Object.assign({}, DEFAULTS, LS.get('cfg', {})); applyCfg(); };
 $('#saveSettings').onclick = () => { readSettings(); $('#settingsModal').classList.remove('on'); toast('Saved'); };
 $('#sSens').oninput = e => { $('#sSensV').textContent = e.target.value; cfg.sens = Number(e.target.value); };
