@@ -836,6 +836,7 @@ function pickVoice(){
   return en.find(v => /en-CA/i.test(v.lang)) || en.find(v => /google/i.test(v.name) && /en-US/i.test(v.lang)) || en.find(v => /en-US/i.test(v.lang)) || en[0] || null;
 }
 let speaking = false;
+function isSpeaking(){ try{ return 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending); }catch(e){ return false; } }
 function say(text, opts={}){
   showVoice(null, text);
   if (!('speechSynthesis' in window) || (!cfg.speak && !opts.force)) return;
@@ -859,14 +860,14 @@ function hideVoiceSoon(ms){ clearTimeout(showVoice._t); showVoice._t = setTimeou
 $('#voice').addEventListener('click', () => { $('#voice').classList.remove('on'); try{ speechSynthesis.cancel(); }catch(e){} });
 
 let rec = null, listening = false, wakeRec = null, wakeOn = false, awaitCmdUntil = 0;
-function listenOnce(){
+function listenOnce(fromWake){
   if (!SR){ say('Voice recognition is not supported in this browser. Use Chrome on Android.', {force:true}); return; }
-  if (listening){ try{ rec.stop(); }catch(e){} return; }
+  if (listening){ if (!fromWake){ try{ rec.stop(); }catch(e){} } return; }
   stopWake();
   try{ speechSynthesis.cancel(); }catch(e){}
   rec = new SR(); rec.lang = 'en-CA'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
   let finalText = '';
-  rec.onstart = () => { listening = true; $('#micBtn').classList.add('live'); showVoice('Listening…', ''); };
+  rec.onstart = () => { listening = true; $('#micBtn').classList.add('live'); showVoice(fromWake ? 'Yes? Listening…' : 'Listening…', ''); };
   rec.onresult = e => {
     let interim = ''; for (let i=e.resultIndex;i<e.results.length;i++){ const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t; else interim += t; }
     showVoice('“'+(finalText||interim)+'”', null);
@@ -899,20 +900,43 @@ function wakeState(state, msg){
   const name = cfg.wakeName || 'Jarvis';
   $('#wakeTxt').textContent = state==='on' ? 'Say “Hey '+name+'”' : state==='err' ? (msg || 'Voice error — tap to retry') : (cfg.wake ? 'Tap to start' : '“Hey '+name+'” off');
 }
+function wakeHeard(t){
+  const el = $('#wakeTxt'); if (!el || !wakeOn) return;
+  clearTimeout(wakeHeard._t);
+  if (t){ el.textContent = '“'+(t.length>22 ? '…'+t.slice(-22) : t)+'”'; }
+  wakeHeard._t = setTimeout(() => { if (wakeOn) wakeState('on'); }, t ? 2500 : 0);
+}
 function startWake(){
   if (!SR){ wakeState('err', 'Voice not supported here'); return; }
   if (!cfg.wake){ wakeState('off'); return; }
   if (wakeOn || listening || wakeBlocked || document.visibilityState!=='visible') return;
-  wakeRec = new SR(); wakeRec.lang = 'en-CA'; wakeRec.continuous = true; wakeRec.interimResults = false;
+  wakeRec = new SR(); wakeRec.lang = 'en-CA'; wakeRec.continuous = true; wakeRec.interimResults = true; wakeRec.maxAlternatives = 3;
   wakeRec.onstart = () => { wakeOn = true; wakeErrs = 0; wakeState('on'); };
+  let woke = false, wokeTimer = null;
+  const handoff = () => { clearTimeout(wokeTimer); woke = false; wakeHeard(''); stopWake(); chime(); setTimeout(() => listenOnce(true), 250); };
   wakeRec.onresult = e => {
+    if (isSpeaking() || listening) return;
     for (let i=e.resultIndex;i<e.results.length;i++){
-      if (!e.results[i].isFinal) continue;
-      const t = e.results[i][0].transcript.trim(); if (speaking || !t) continue;
-      log('Heard: “'+t.slice(0,60)+'”');
-      const m = t.match(wakeRe());
-      if (m){ wake(); const rest = (m[2]||'').trim(); if (rest.length > 2) handleCommand(rest); else { awaitCmdUntil = Date.now()+8000; chime(); showVoice('Yes? Listening…', ''); } }
-      else if (Date.now() < awaitCmdUntil){ awaitCmdUntil = 0; wake(); handleCommand(t); }
+      const r = e.results[i];
+      // check every alternative the recogniser offers
+      let m = null, t = '';
+      for (let k=0;k<r.length && !m;k++){ t = (r[k].transcript||'').trim(); m = t.match(wakeRe()); }
+      if (!t) continue;
+      wakeHeard(t);
+      if (r.isFinal) log('Heard: “'+t.slice(0,60)+'”');
+      if (m){
+        wake();
+        const rest = (m[2]||'').trim();
+        if (r.isFinal){
+          clearTimeout(wokeTimer); woke = false;
+          if (rest.length > 2){ stopWake(); handleCommand(rest); setTimeout(startWake, 1500); }
+          else handoff();
+        } else if (!woke){
+          woke = true; showVoice('Yes? Listening…', '');
+          // if Chrome never sends a final result, switch to normal listening
+          wokeTimer = setTimeout(() => { if (woke) handoff(); }, 1800);
+        }
+      }
     }
   };
   wakeRec.onerror = e => {
@@ -1170,7 +1194,7 @@ $('#wipeEvents').onclick = async () => { if (!confirm('Delete all recordings on 
 function everySecond(){
   tickClock(); renderFocus();
   const modalOpen = !!document.querySelector('.modal.on');
-  if (!saverOn && !modalOpen && !listening && !speaking){
+  if (!saverOn && !modalOpen && !listening && !isSpeaking()){
     if (Date.now()-lastActivity > cfg.idleSec*1000) setSaver(true);
     else if (isArmed() && Date.now()-lastActivity > 15000) setSaver(true);   // stay dark while armed
   }
