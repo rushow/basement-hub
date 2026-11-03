@@ -59,6 +59,11 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 .ctl{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
 .icons{display:flex;gap:0}
 .icons button{padding:2px 6px;font-size:15px;background:transparent;border:none;color:var(--dim)}
+#wakePill{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 10px;border-radius:999px;font-size:11.5px;
+  background:var(--card2);border:1px solid var(--line);color:var(--dim);cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#wakePill i{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
+#wakePill.on{color:var(--accent);border-color:var(--accent)} #wakePill.on i{background:var(--accent);animation:blink 1.6s infinite}
+#wakePill.err{color:var(--bad);border-color:var(--bad)} #wakePill.err i{background:var(--bad)}
 #micBtn{width:52px;height:52px;border-radius:50%;padding:0;display:grid;place-items:center;
   background:var(--accent);color:var(--accent-ink);border:none}
 #micBtn svg{width:24px;height:24px}
@@ -200,6 +205,7 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
       <div class="tm">
         <div id="clock" class="num">--:--</div>
         <div id="date">&nbsp;</div>
+        <div id="wakePill" title="Hands-free voice"><i></i><span id="wakeTxt">Hands-free off</span></div>
       </div>
       <div class="ctl">
         <div class="icons">
@@ -886,23 +892,50 @@ function wakeRe(){
   const alts = Array.from(new Set([name].concat(SOUNDALIKE[name] || []))).map(w => w.replace(/\s+/g,'\\s+'));
   return new RegExp('(?:\\b(?:hey|hi|ok|okay|yo)\\s+|^\\s*)(' + alts.join('|') + ')\\b[,.!?]?\\s*(.*)$', 'i');
 }
+let wakeErrs = 0, wakeBlocked = false;
+function wakeState(state, msg){
+  const p = $('#wakePill'); if (!p) return;
+  p.className = state==='on' ? 'on' : state==='err' ? 'err' : '';
+  const name = cfg.wakeName || 'Jarvis';
+  $('#wakeTxt').textContent = state==='on' ? 'Say “Hey '+name+'”' : state==='err' ? (msg || 'Voice error — tap to retry') : (cfg.wake ? 'Tap to start' : '“Hey '+name+'” off');
+}
 function startWake(){
-  if (!cfg.wake || !SR || wakeOn || listening || document.visibilityState!=='visible') return;
+  if (!SR){ wakeState('err', 'Voice not supported here'); return; }
+  if (!cfg.wake){ wakeState('off'); return; }
+  if (wakeOn || listening || wakeBlocked || document.visibilityState!=='visible') return;
   wakeRec = new SR(); wakeRec.lang = 'en-CA'; wakeRec.continuous = true; wakeRec.interimResults = false;
+  wakeRec.onstart = () => { wakeOn = true; wakeErrs = 0; wakeState('on'); };
   wakeRec.onresult = e => {
     for (let i=e.resultIndex;i<e.results.length;i++){
       if (!e.results[i].isFinal) continue;
-      const t = e.results[i][0].transcript.trim(); if (speaking) continue;
+      const t = e.results[i][0].transcript.trim(); if (speaking || !t) continue;
+      log('Heard: “'+t.slice(0,60)+'”');
       const m = t.match(wakeRe());
       if (m){ wake(); const rest = (m[2]||'').trim(); if (rest.length > 2) handleCommand(rest); else { awaitCmdUntil = Date.now()+8000; chime(); showVoice('Yes? Listening…', ''); } }
       else if (Date.now() < awaitCmdUntil){ awaitCmdUntil = 0; wake(); handleCommand(t); }
     }
   };
-  wakeRec.onerror = e => { if (e.error==='not-allowed'){ log('Hands-free: mic blocked'); cfg.wake=false; } };
-  wakeRec.onend = () => { wakeOn = false; if (cfg.wake && !listening) setTimeout(startWake, 400); };
-  try{ wakeRec.start(); wakeOn = true; }catch(e){ wakeOn = false; }
+  wakeRec.onerror = e => {
+    if (e.error==='no-speech' || e.error==='aborted') return;
+    log('Hands-free error: '+e.error); wakeErrs++;
+    if (e.error==='not-allowed' || e.error==='service-not-allowed'){ wakeBlocked = true; wakeState('err', 'Mic blocked — tap to retry'); }
+    else if (e.error==='network') wakeState('err', 'No internet for voice');
+  };
+  wakeRec.onend = () => {
+    wakeOn = false;
+    if (cfg.wake && !listening && !wakeBlocked) setTimeout(startWake, wakeErrs > 2 ? 5000 : 300);
+    else if (!cfg.wake) wakeState('off');
+  };
+  try{ wakeRec.start(); }catch(e){ wakeOn = false; log('Hands-free start failed: '+e.message); wakeState('err', 'Tap to start voice'); }
 }
-function stopWake(){ if (wakeRec){ wakeRec.onend = () => { wakeOn = false; }; try{ wakeRec.abort(); }catch(e){} } wakeOn = false; }
+function stopWake(){ if (wakeRec){ wakeRec.onend = () => { wakeOn = false; }; try{ wakeRec.abort(); }catch(e){} } wakeOn = false; wakeState('off'); }
+$('#wakePill').addEventListener('click', e => {
+  e.stopPropagation();
+  if (!cfg.wake){ cfg.wake = true; LS.set('cfg', cfg); toast('Hands-free on — say “Hey '+(cfg.wakeName||'Jarvis')+'”'); }
+  wakeBlocked = false; wakeErrs = 0; stopWake(); setTimeout(startWake, 150);
+});
+// Chrome on Android may need a tap before the mic can start: retry on any touch
+document.addEventListener('pointerdown', () => { if (cfg.wake && !wakeOn && !listening){ wakeBlocked = false; startWake(); } }, true);
 
 const ORD = {first:0,'1st':0,one:0,second:1,'2nd':1,two:1,third:2,'3rd':2,three:2};
 async function handleCommand(raw){
@@ -1147,7 +1180,7 @@ loadNews(); setInterval(() => loadNews(), 20*60*1000);
 renderCalendar(); loadCalendar(); setInterval(() => loadCalendar(), 10*60*1000);
 setInterval(() => { renderNews(); renderWeather(); renderCalendar(); }, 60000);
 setInterval(everySecond, 1000); setInterval(nightlyReload, 30000); setInterval(analyse, 200);
-requestWakeLock(); ensureCamera(); watchBattery(); setTimeout(startWake, 2000);
+requestWakeLock(); ensureCamera(); watchBattery(); wakeState('off'); setTimeout(startWake, 2000);
 if (!SR) $('#micBtn').title = 'Voice not supported in this browser';
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(e => log('SW: '+e.message));
 log('Basement Hub started');
