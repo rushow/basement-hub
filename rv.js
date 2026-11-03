@@ -44,12 +44,22 @@ const RVLIB = (() => {
       return JSON.parse(td.decode(pt));
     }catch(e){ return null; }   // not ours / tampered
   }
-  async function send(server, topic, key, obj){
-    const r = await fetch(server.replace(/\/+$/,'') + '/' + topic, {method:'POST', body: await seal(key, obj)});
+  // ntfy.sh caps a message at 4096 bytes, so long messages are sent in numbered pieces.
+  const CHUNK = 3000;
+  async function post(server, topic, body){
+    const r = await fetch(server.replace(/\/+$/,'') + '/' + topic, {method:'POST', body});
     if (!r.ok) throw new Error('signal HTTP ' + r.status);
+  }
+  async function send(server, topic, key, obj){
+    const sealed = await seal(key, obj);
+    if (sealed.length <= CHUNK) return post(server, topic, sealed);
+    const id = hex(crypto.getRandomValues(new Uint8Array(4))), n = Math.ceil(sealed.length / CHUNK);
+    for (let i = 0; i < n; i++) await post(server, topic, 'bhc.' + id + '.' + i + '.' + n + '.' + sealed.slice(i*CHUNK, (i+1)*CHUNK));
+    return n;
   }
   // Subscribe to a topic; calls onMsg(decryptedObject) for every valid message.
   function listen(server, topic, key, onMsg, onState){
+    const parts = new Map();
     const es = new EventSource(server.replace(/\/+$/,'') + '/' + topic + '/sse');
     es.onopen = () => onState && onState('open');
     es.onerror = () => onState && onState('error');
@@ -58,6 +68,15 @@ const RVLIB = (() => {
       if (m.event && m.event !== 'message') return;
       let text = m.message;
       if (m.attachment && m.attachment.url){ try{ text = await (await fetch(m.attachment.url)).text(); }catch(e){ return; } }
+      const c = typeof text === 'string' && text.match(/^bhc\.([0-9a-f]+)\.(\d+)\.(\d+)\.([\s\S]*)$/);
+      if (c){
+        const id = c[1], i = +c[2], n = +c[3];
+        if (!parts.has(id)) parts.set(id, {n, got:new Array(n), at:Date.now()});
+        const p = parts.get(id); p.got[i] = c[4];
+        if (p.got.filter(x => x !== undefined).length < p.n) return;
+        parts.delete(id); text = p.got.join('');
+        for (const [k, v] of parts) if (Date.now() - v.at > 60000) parts.delete(k);
+      }
       const obj = await open(key, text); if (obj) onMsg(obj);
     };
     return es;
@@ -69,5 +88,5 @@ const RVLIB = (() => {
       pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete'){ clearTimeout(t); res(); } });
     });
   }
-  return {ICE, newSecret, derive, send, listen, iceDone};
+  return {ICE, newSecret, derive, send, listen, iceDone, seal};
 })();

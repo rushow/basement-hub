@@ -1131,13 +1131,15 @@ async function rvStart(){
   if (!cfg.rv || !cfg.rvSecret || !window.RTCPeerConnection) return;
   const d = await RVLIB.derive(cfg.rvSecret); RV.topic = d.topic; RV.key = d.key; RV.secret = cfg.rvSecret;
   RV.es = RVLIB.listen(cfg.ntfyServer || 'https://ntfy.sh', RV.topic + '-h', RV.key, rvOnMsg,
-    st => { if (st==='open') log('Live view: ready for viewers'); });
+    st => { if (st==='open') log('Live view: ready for viewers'); else if (st==='error') log('Live view: lost connection to ntfy, retrying'); });
 }
 async function rvOnMsg(m){
   if (!m || !m.id || typeof m.id !== 'string' || Date.now() - (m.ts||0) > 120000) return;   // ignore stale/replayed
   if (m.t === 'bye'){ rvClose(m.id); return; }
   if (m.t !== 'offer' || !m.sdp) return;
   if (!stream || !cameraOk){ RVLIB.send(cfg.ntfyServer, RV.topic+'-v-'+m.id, RV.key, {t:'error', msg:'Hub camera is off'}).catch(()=>{}); return; }
+  log('Live view: request from a viewer');
+  RVLIB.send(cfg.ntfyServer, RV.topic + '-v-' + m.id, RV.key, {t:'ack', ts: Date.now()}).catch(()=>{});
   rvClose(m.id);
   if (RV.peers.size >= 3){ rvClose(RV.peers.keys().next().value); }
   const pc = new RTCPeerConnection({iceServers: RVLIB.ICE});

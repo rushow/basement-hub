@@ -50,7 +50,7 @@ button.primary{background:var(--accent);color:var(--ink);border-color:transparen
 const $ = s => document.querySelector(s);
 const params = new URLSearchParams(location.hash.slice(1));
 const secret = params.get('s'), server = params.get('srv') || 'https://ntfy.sh';
-let pc = null, es = null, myId = null, timer = null, key = null, topic = null, status = null;
+let pc = null, es = null, myId = null, timer = null, key = null, topic = null, status = null, acked = false, listening = false, byeBody = null;
 
 function setState(text, cls){ $('#state').textContent = text; $('#dot').className = 'dot ' + (cls||''); }
 function showMsg(title, body, spin){ $('#msg').style.display = 'grid'; $('#msg').innerHTML = '<div>'+(spin?'<div class="spin"></div>':'')+'<b>'+title+'</b>'+(body||'')+'</div>'; }
@@ -62,6 +62,7 @@ async function connect(){
   cleanup();
   setState('Connecting', 'warn'); showMsg('Connecting to Basement Hub…', 'Make sure the hub is on and live viewing is allowed in its settings.', true);
   if (!key){ const d = await RVLIB.derive(secret); key = d.key; topic = d.topic; }
+  acked = false; listening = false;
   myId = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2,'0')).join('');
   pc = new RTCPeerConnection({iceServers: RVLIB.ICE});
   pc.addTransceiver('video', {direction:'recvonly'});
@@ -75,17 +76,21 @@ async function connect(){
     else if (st === 'failed'){ setState('Connection failed', 'bad'); showMsg('Couldn’t connect', 'This can happen on some mobile networks. Try Wi-Fi, or tap Reconnect.'); }
   };
   es = RVLIB.listen(server, topic + '-v-' + myId, key, async m => {
-    if (m.t === 'answer' && pc && pc.signalingState === 'have-local-offer'){ await pc.setRemoteDescription({type:'answer', sdp:m.sdp}); setState('Connecting video…', 'warn'); }
+    if (m.t === 'answer' && pc && pc.signalingState === 'have-local-offer'){ acked = true; await pc.setRemoteDescription({type:'answer', sdp:m.sdp}); setState('Connecting video…', 'warn'); }
+    if (m.t === 'ack'){ acked = true; setState('Hub found…', 'warn'); showMsg('Hub found — starting video…', '', true); }
     if (m.t === 'error'){ setState('Hub problem', 'bad'); showMsg('The hub answered', m.msg); }
-  });
+  }, st => { if (st === 'open') listening = true; });
   await pc.setLocalDescription(await pc.createOffer());
   await RVLIB.iceDone(pc, 3000);
   // wait until our reply channel is listening, then send the offer to the hub
   await new Promise(r => { if (es.readyState === 1) return r(); es.addEventListener('open', r, {once:true}); setTimeout(r, 4000); });
+  showMsg('Calling the hub…', '', true); setState('Calling hub', 'warn');
+  RVLIB.seal(key, {t:'bye', id:myId, ts:Date.now()+3600000}).then(b => byeBody = b).catch(()=>{});
   try{ await RVLIB.send(server, topic + '-h', key, {t:'offer', id:myId, sdp:pc.localDescription.sdp, ts:Date.now()}); }
   catch(e){ setState('Offline', 'bad'); showMsg('Can’t reach the signalling server', e.message); return; }
   timer = setTimeout(() => { if (!pc || pc.connectionState !== 'connected'){ setState('Hub not answering', 'bad');
-    showMsg('The hub isn’t answering', 'Check that the hub app is open on the S23 FE, connected to Wi-Fi, and that “Allow live viewing” is on. Then tap Reconnect.'); } }, 20000);
+    if (acked) showMsg('Hub found, but video couldn’t connect', 'Your network may be blocking direct phone-to-phone video. Try Wi-Fi, then tap Reconnect.');
+    else showMsg('The hub isn’t answering', (listening ? '' : 'This phone couldn’t open the message channel. ') + 'Check that the hub app is open on the S23 FE, it has the latest update (reload it), and that “Allow live viewing” is on in its Settings. Then tap Reconnect.'); } }, 20000);
 }
 function renderInfo(){
   if (!status) return;
@@ -95,7 +100,11 @@ function renderInfo(){
 function cleanup(){
   clearTimeout(timer);
   if (es){ es.close(); es = null; }
-  if (pc){ if (myId && key) RVLIB.send(server, topic + '-h', key, {t:'bye', id:myId, ts:Date.now()}).catch(()=>{}); try{ pc.close(); }catch(e){} pc = null; }
+  if (pc){
+    const url = server.replace(/\/+$/,'') + '/' + topic + '-h';
+    if (byeBody && navigator.sendBeacon) navigator.sendBeacon(url, new Blob([byeBody], {type:'text/plain'}));
+    else if (myId && key) RVLIB.send(server, topic + '-h', key, {t:'bye', id:myId, ts:Date.now()}).catch(()=>{});
+    byeBody = null; try{ pc.close(); }catch(e){} pc = null; }
 }
 $('#re').onclick = connect;
 $('#fit').onclick = () => { document.body.classList.toggle('fill'); $('#fit').textContent = document.body.classList.contains('fill') ? 'Fit screen' : 'Fill screen'; };
