@@ -37,7 +37,7 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 
 /* ---------- Layout ---------- */
 #app{position:fixed;inset:0;padding:10px;display:grid;gap:10px;
-  grid-template-columns:1fr 1.35fr .8fr;grid-template-rows:minmax(0,1fr);transition:transform 2s}
+  grid-template-columns:1fr 1.3fr 1fr;grid-template-rows:minmax(0,1fr);transition:transform 2s}
 @media (orientation:portrait){
   #app{grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:max-content;align-content:start;overflow:auto}
   #camCol{order:-1}
@@ -53,7 +53,7 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 /* ---------- Clock + controls ---------- */
 .clockcard{display:flex;align-items:stretch;gap:8px}
 .clockcard .tm{flex:1;min-width:0}
-#clock{font-size:clamp(34px,min(6.3vw,13vh),84px);font-weight:300;line-height:.95;letter-spacing:-.02em;white-space:nowrap}
+#clock{font-size:clamp(32px,min(5.6vw,13vh),80px);font-weight:300;line-height:.95;letter-spacing:-.02em;white-space:nowrap}
 #clock small{font-size:.35em;color:var(--muted);margin-left:5px;letter-spacing:0}
 #date{color:var(--muted);font-size:14px;margin-top:4px}
 .ctl{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
@@ -85,10 +85,10 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 .seg button{padding:3px 8px;font-size:11px;letter-spacing:0;text-transform:none}
 .seg button.on{border-color:var(--accent);color:var(--accent)}
 #newsList{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
-#newsList li{padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px}
+#newsList li{padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px}
 #newsList li:last-child{border-bottom:none}
 #newsList .n{color:var(--accent);font-weight:600;font-size:15px;flex:none;width:14px}
-#newsList .h{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#newsList .h{font-size:15px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 #newsList .s{color:var(--dim);font-size:11px;margin-top:2px}
 .empty{color:var(--dim);font-size:13px;padding:10px 0}
 
@@ -118,9 +118,9 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 .rec i{width:8px;height:8px;border-radius:50%;background:#f05050;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.2}}
 .camfoot{position:absolute;left:0;right:0;bottom:0;padding:30px 8px 8px;
-  background:linear-gradient(transparent,rgba(4,12,20,.88));display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px}
-.camfoot .info{flex-basis:100%}
-.camfoot button{flex:1;padding:6px 8px;font-size:13px}
+  background:linear-gradient(transparent,rgba(4,12,20,.88));display:flex;align-items:center;gap:6px}
+.camfoot .info{flex:1}
+.camfoot button{flex:none;padding:5px 10px;font-size:13px}
 .camfoot .info{color:#cfe3f0;font-size:11.5px;min-width:0;line-height:1.3}
 .camfoot .info b{font-size:12px;color:#fff;font-weight:600}
 .camfoot .info b::after{content:' ·'}
@@ -214,13 +214,19 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
     </div>
   </section>
 
-  <!-- Column 2: news, focus -->
-  <section class="col">
-    <div class="card grow">
-      <h2><span>Top news</span>
-        <span class="seg" id="newsSeg"><button data-s="sk">Sask</button><button data-s="ca">Canada</button></span></h2>
-      <ul id="newsList"><li class="empty">Loading headlines…</li></ul>
-      <div id="newsUpd" hidden></div>
+  <!-- Column 2: live camera, focus -->
+  <section class="col" id="camCol">
+    <div class="card camcard" id="camCard">
+      <video id="cam" playsinline muted autoplay></video>
+      <div class="camoff" id="camOff">Starting camera…</div>
+      <div class="chip" id="stateChip"><span class="dot" id="secDot"></span><span id="secState">Starting…</span><span class="rec" id="recTag"><i></i>REC</span></div>
+      <div class="chip" id="batChip" hidden><span id="battery" class="num"></span></div>
+      <div class="camfoot">
+        <div class="info"><b id="secSub">&nbsp;</b> <span id="lastMotion">No motion yet</span><span id="evCount" class="num"></span></div>
+        <button id="eventsBtn">Recordings</button>
+        <button class="primary" id="armBtn">Arm</button>
+      </div>
+      <div id="meter"><i></i></div>
     </div>
     <div class="card">
       <h2>Focus</h2>
@@ -242,19 +248,13 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
     </div>
   </section>
 
-  <!-- Column 3: live camera -->
-  <section class="col" id="camCol">
-    <div class="card camcard" id="camCard">
-      <video id="cam" playsinline muted autoplay></video>
-      <div class="camoff" id="camOff">Starting camera…</div>
-      <div class="chip" id="stateChip"><span class="dot" id="secDot"></span><span id="secState">Starting…</span><span class="rec" id="recTag"><i></i>REC</span></div>
-      <div class="chip" id="batChip" hidden><span id="battery" class="num"></span></div>
-      <div class="camfoot">
-        <div class="info"><b id="secSub">&nbsp;</b> <span id="lastMotion">No motion yet</span><span id="evCount" class="num"></span></div>
-        <button id="eventsBtn">Recordings</button>
-        <button class="primary" id="armBtn">Arm</button>
-      </div>
-      <div id="meter"><i></i></div>
+  <!-- Column 3: news -->
+  <section class="col" id="newsCol">
+    <div class="card grow">
+      <h2><span>Top news</span>
+        <span class="seg" id="newsSeg"><button data-s="sk">Sask</button><button data-s="ca">Canada</button></span></h2>
+      <ul id="newsList"><li class="empty">Loading headlines…</li></ul>
+      <div id="newsUpd" hidden></div>
     </div>
   </section>
 </div>
