@@ -66,6 +66,19 @@ For full privacy you can later self-host ntfy (the OnePlus 6T could do this).
 
 To show today's Google Calendar events on the left, follow **[CALENDAR.md](CALENDAR.md)** (about 5 minutes, free).
 
+## Live view on your iPhone
+
+1. On the hub: **⚙ Settings → Live view on your iPhone → Show iPhone link / QR**. Tap **Save**.
+2. Point your iPhone camera at the QR code and open the link in **Safari**.
+3. In Safari: **Share → Add to Home Screen** — you now have a **Basement Cam** app on the iPhone.
+
+The video goes directly phone-to-phone over WebRTC (encrypted). The free ntfy server only passes the short
+connection messages, and those are encrypted with the secret in your link, so ntfy can't read them.
+While someone is watching, the hub's camera shows a 👁 badge. **New link (revoke old)** cuts off any old links.
+
+Works best at home on Wi-Fi. Away from home it usually works too, but some mobile networks block direct
+phone-to-phone connections; if it won't connect on data, try Wi-Fi.
+
 ## Voice assistant
 
 Tap the round 🎤 button (next to the clock) and speak. Replies are spoken and shown on screen. Try:

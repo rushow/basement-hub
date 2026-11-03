@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c1722">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Basement Cam">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Basement Cam</title>
+<style>
+:root{--bg:#0c1722;--card:#13212e;--line:#22384b;--text:#e4f0f8;--muted:#8fb0c6;--accent:#7cc0e8;--ink:#06202f;--ok:#5cc9a7;--bad:#f07070;--warn:#f2c46b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+body.fill #v{object-fit:cover}
+.bar{position:fixed;left:0;right:0;display:flex;align-items:center;gap:8px;padding:12px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left));z-index:2}
+.top{top:0;padding-top:max(12px,env(safe-area-inset-top));background:linear-gradient(rgba(0,0,0,.6),transparent)}
+.bot{bottom:0;padding-bottom:max(14px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.7));justify-content:center}
+.chip{display:flex;align-items:center;gap:7px;background:rgba(6,18,28,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:999px;padding:6px 12px;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#7a8a96}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad);box-shadow:0 0 8px var(--bad)} .dot.warn{background:var(--warn)}
+.grow{flex:1}
+button{font:inherit;color:var(--text);background:rgba(26,44,60,.85);border:1px solid rgba(124,192,232,.35);border-radius:12px;padding:10px 16px;font-size:15px}
+button.primary{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:600}
+#msg{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:30px;z-index:1;color:var(--muted);font-size:16px;line-height:1.5}
+#msg b{color:var(--text);display:block;font-size:20px;margin-bottom:6px}
+.spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:sp 1s linear infinite;margin:0 auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<video id="v" playsinline autoplay muted></video>
+<div id="msg"><div><div class="spin"></div><b>Connecting to Basement Hub…</b>Make sure the hub is on and live viewing is allowed in its settings.</div></div>
+<div class="bar top">
+  <div class="chip"><span class="dot" id="dot"></span><span id="state">Connecting</span></div>
+  <div class="grow"></div>
+  <div class="chip" id="info" style="font-size:12px">—</div>
+</div>
+<div class="bar bot">
+  <button id="fit">Fill screen</button>
+  <button class="primary" id="re">Reconnect</button>
+</div>
+<script src="rv.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.hash.slice(1));
+const secret = params.get('s'), server = params.get('srv') || 'https://ntfy.sh';
+let pc = null, es = null, myId = null, timer = null, key = null, topic = null, status = null;
+
+function setState(text, cls){ $('#state').textContent = text; $('#dot').className = 'dot ' + (cls||''); }
+function showMsg(title, body, spin){ $('#msg').style.display = 'grid'; $('#msg').innerHTML = '<div>'+(spin?'<div class="spin"></div>':'')+'<b>'+title+'</b>'+(body||'')+'</div>'; }
+function hideMsg(){ $('#msg').style.display = 'none'; }
+function ago(ts){ if (!ts) return 'none yet'; const s = Math.round((Date.now()-ts)/1000); return s<60 ? 'just now' : s<3600 ? Math.floor(s/60)+' min ago' : Math.floor(s/3600)+' h ago'; }
+
+async function connect(){
+  if (!secret){ setState('No link', 'bad'); showMsg('Open this from your private link', 'On the hub: ⚙ Settings → Live view on your iPhone → Show iPhone link / QR, then scan the QR code.'); return; }
+  cleanup();
+  setState('Connecting', 'warn'); showMsg('Connecting to Basement Hub…', 'Make sure the hub is on and live viewing is allowed in its settings.', true);
+  if (!key){ const d = await RVLIB.derive(secret); key = d.key; topic = d.topic; }
+  myId = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2,'0')).join('');
+  pc = new RTCPeerConnection({iceServers: RVLIB.ICE});
+  pc.addTransceiver('video', {direction:'recvonly'});
+  const ch = pc.createDataChannel('status');
+  ch.onmessage = e => { try{ status = JSON.parse(e.data); renderInfo(); }catch(_){} };
+  pc.ontrack = e => { const v = $('#v'); v.srcObject = e.streams[0] || new MediaStream([e.track]); v.play().catch(()=>{}); };
+  pc.onconnectionstatechange = () => {
+    const st = pc.connectionState;
+    if (st === 'connected'){ clearTimeout(timer); hideMsg(); setState('Live', 'ok'); }
+    else if (st === 'disconnected'){ setState('Reconnecting…', 'warn'); }
+    else if (st === 'failed'){ setState('Connection failed', 'bad'); showMsg('Couldn’t connect', 'This can happen on some mobile networks. Try Wi-Fi, or tap Reconnect.'); }
+  };
+  es = RVLIB.listen(server, topic + '-v-' + myId, key, async m => {
+    if (m.t === 'answer' && pc && pc.signalingState === 'have-local-offer'){ await pc.setRemoteDescription({type:'answer', sdp:m.sdp}); setState('Connecting video…', 'warn'); }
+    if (m.t === 'error'){ setState('Hub problem', 'bad'); showMsg('The hub answered', m.msg); }
+  });
+  await pc.setLocalDescription(await pc.createOffer());
+  await RVLIB.iceDone(pc, 3000);
+  // wait until our reply channel is listening, then send the offer to the hub
+  await new Promise(r => { if (es.readyState === 1) return r(); es.addEventListener('open', r, {once:true}); setTimeout(r, 4000); });
+  try{ await RVLIB.send(server, topic + '-h', key, {t:'offer', id:myId, sdp:pc.localDescription.sdp, ts:Date.now()}); }
+  catch(e){ setState('Offline', 'bad'); showMsg('Can’t reach the signalling server', e.message); return; }
+  timer = setTimeout(() => { if (!pc || pc.connectionState !== 'connected'){ setState('Hub not answering', 'bad');
+    showMsg('The hub isn’t answering', 'Check that the hub app is open on the S23 FE, connected to Wi-Fi, and that “Allow live viewing” is on. Then tap Reconnect.'); } }, 20000);
+}
+function renderInfo(){
+  if (!status) return;
+  const a = status.arming ? 'Arming' : status.armed ? 'Armed' : 'Disarmed';
+  $('#info').textContent = a + ' · motion ' + ago(status.lastMotion) + (status.battery!=null ? ' · ' + status.battery + '%' + (status.charging ? '⚡' : '') : '') + (status.recording ? ' · REC' : '');
+}
+function cleanup(){
+  clearTimeout(timer);
+  if (es){ es.close(); es = null; }
+  if (pc){ if (myId && key) RVLIB.send(server, topic + '-h', key, {t:'bye', id:myId, ts:Date.now()}).catch(()=>{}); try{ pc.close(); }catch(e){} pc = null; }
+}
+$('#re').onclick = connect;
+$('#fit').onclick = () => { document.body.classList.toggle('fill'); $('#fit').textContent = document.body.classList.contains('fill') ? 'Fit screen' : 'Fill screen'; };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (!pc || pc.connectionState !== 'connected')) connect(); });
+window.addEventListener('pagehide', cleanup);
+setInterval(renderInfo, 5000);
+connect();
+</script>
+</body>
+</html>
