@@ -59,15 +59,17 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 .ctl{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
 .icons{display:flex;gap:0}
 .icons button{padding:2px 6px;font-size:15px;background:transparent;border:none;color:var(--dim)}
-#wakePill{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 10px;border-radius:999px;font-size:11.5px;
-  background:var(--card2);border:1px solid var(--line);color:var(--dim);cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-#wakePill i{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none}
-#wakePill.on{color:var(--accent);border-color:var(--accent)} #wakePill.on i{background:var(--accent);animation:blink 1.6s infinite}
-#wakePill.err{color:var(--bad);border-color:var(--bad)} #wakePill.err i{background:var(--bad)}
-#micBtn{width:52px;height:52px;border-radius:50%;padding:0;display:grid;place-items:center;
-  background:var(--accent);color:var(--accent-ink);border:none}
-#micBtn svg{width:24px;height:24px}
-#micBtn.live{background:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+/* ---------- Jarvis box ---------- */
+.jvst{display:inline-flex;align-items:center;gap:6px;letter-spacing:0;text-transform:none;font-weight:600;color:var(--dim);font-size:12px}
+.jvst i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.jvst.on{color:var(--ok)} .jvst.on i{background:var(--ok);animation:blink 1.6s infinite}
+.jvst.err{color:var(--bad)} .jvst.err i{background:var(--bad)}
+.jvrow{display:flex;gap:8px}
+.jvrow button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;font-size:15px;font-weight:600}
+#jvToggle.stop{background:transparent;color:var(--bad);border-color:var(--bad)}
+.jvheard{color:var(--muted);font-size:12.5px;margin-top:8px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+#micBtn svg{width:18px;height:18px}
+#micBtn.live{background:var(--bad);color:#fff;border-color:transparent;animation:pulse 1.2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(240,112,112,.6)}100%{box-shadow:0 0 0 14px rgba(240,112,112,0)}}
 
 /* ---------- Weather ---------- */
@@ -81,6 +83,11 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 .wx-day .pp{color:var(--accent);font-size:10.5px}
 
 /* ---------- Calendar ---------- */
+#newsCol #calCard{flex:1.55;display:flex;flex-direction:column;min-height:0}
+#newsCol #newsCard{flex:1;display:flex;flex-direction:column;min-height:0}
+#newsCard #newsList .h{font-size:13.5px;line-height:1.3;-webkit-line-clamp:1}
+#newsCard #newsList li{padding:8px 0}
+#newsCard #newsList .s{display:none}
 #calList{list-style:none;margin:0;padding:0;overflow:auto;flex:1;min-height:0}
 #calList li{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);align-items:flex-start}
 #calList li:last-child{border-bottom:none}
@@ -199,13 +206,12 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 <body>
 
 <div id="app">
-  <!-- Column 1: clock, weather, countdowns -->
+  <!-- Column 1: clock, weather, Jarvis, countdowns -->
   <section class="col">
     <div class="card clockcard">
       <div class="tm">
         <div id="clock" class="num">--:--</div>
         <div id="date">&nbsp;</div>
-        <div id="wakePill" title="Hands-free voice"><i></i><span id="wakeTxt">Hands-free off</span></div>
       </div>
       <div class="ctl">
         <div class="icons">
@@ -213,9 +219,6 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
           <button id="sleepBtn" title="Blank screen now">☾</button>
           <button id="settingsBtn" title="Settings">⚙</button>
         </div>
-        <button id="micBtn" title="Ask Hub" aria-label="Ask Hub">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-        </button>
       </div>
     </div>
     <div class="card">
@@ -227,10 +230,13 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
       </div>
       <div class="wx-days" id="wxDays"></div>
     </div>
-    <div class="card grow" id="calCard">
-      <h2><span id="calTitle">Today</span><span id="calUpd" style="letter-spacing:0;text-transform:none;font-weight:400"></span></h2>
-      <div class="allday" id="calAllDay"></div>
-      <ul id="calList"></ul>
+    <div class="card grow" id="jvCard">
+      <h2><span>Jarvis</span><span class="jvst" id="jvState"><i></i><b id="wakeTxt">Off</b></span></h2>
+      <div class="jvrow">
+        <button class="primary" id="jvToggle">Start</button>
+        <button id="micBtn" title="Ask once" aria-label="Ask once"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Ask</span></button>
+      </div>
+      <div class="jvheard" id="jvHeard">Tap Start, then say “Hey Jarvis …”</div>
     </div>
     <div class="card" id="cdCard" hidden>
       <h2>Countdowns</h2>
@@ -272,9 +278,14 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
     </div>
   </section>
 
-  <!-- Column 3: news -->
+  <!-- Column 3: calendar, news -->
   <section class="col" id="newsCol">
-    <div class="card grow">
+    <div class="card" id="calCard">
+      <h2><span id="calTitle">Today</span><span id="calUpd" style="letter-spacing:0;text-transform:none;font-weight:400"></span></h2>
+      <div class="allday" id="calAllDay"></div>
+      <ul id="calList"></ul>
+    </div>
+    <div class="card" id="newsCard">
       <h2><span>Top news</span>
         <span class="seg" id="newsSeg"><button data-s="sk">Sask</button><button data-s="ca">Canada</button></span></h2>
       <ul id="newsList"><li class="empty">Loading headlines…</li></ul>
@@ -895,16 +906,22 @@ function wakeRe(){
 }
 let wakeErrs = 0, wakeBlocked = false;
 function wakeState(state, msg){
-  const p = $('#wakePill'); if (!p) return;
-  p.className = state==='on' ? 'on' : state==='err' ? 'err' : '';
+  const st = $('#jvState'), btn = $('#jvToggle'); if (!st) return;
+  st.className = 'jvst' + (state==='on' ? ' on' : state==='err' ? ' err' : '');
   const name = cfg.wakeName || 'Jarvis';
-  $('#wakeTxt').textContent = state==='on' ? 'Say “Hey '+name+'”' : state==='err' ? (msg || 'Voice error — tap to retry') : (cfg.wake ? 'Tap to start' : '“Hey '+name+'” off');
+  $('#wakeTxt').textContent = state==='on' ? 'Listening' : state==='err' ? 'Problem' : (cfg.wake ? 'Paused' : 'Off');
+  btn.textContent = cfg.wake ? 'Stop' : 'Start'; btn.className = cfg.wake ? 'stop' : 'primary';
+  if (state==='on'){ if (Date.now()-(setHeard.convoAt||0) > 30000) setHeard('Say “Hey '+name+'” — e.g. “Hey '+name+', what’s the weather?”'); }
+  else if (state==='err') setHeard(msg || 'Voice error — tap Start to retry');
+  else if (!cfg.wake) setHeard('Tap Start, then say “Hey '+name+' …”. Or tap Ask to speak once.');
+  else setHeard('Tap anywhere to resume listening');
 }
+function setHeard(t){ const el = $('#jvHeard'); if (el) el.textContent = t; }
 function wakeHeard(t){
-  const el = $('#wakeTxt'); if (!el || !wakeOn) return;
+  if (!wakeOn) return;
   clearTimeout(wakeHeard._t);
-  if (t){ el.textContent = '“'+(t.length>22 ? '…'+t.slice(-22) : t)+'”'; }
-  wakeHeard._t = setTimeout(() => { if (wakeOn) wakeState('on'); }, t ? 2500 : 0);
+  if (t) setHeard('Heard: “'+(t.length>70 ? '…'+t.slice(-70) : t)+'”');
+  wakeHeard._t = setTimeout(() => { if (wakeOn) wakeState('on'); }, t ? 4000 : 0);
 }
 function startWake(){
   if (!SR){ wakeState('err', 'Voice not supported here'); return; }
@@ -953,10 +970,12 @@ function startWake(){
   try{ wakeRec.start(); }catch(e){ wakeOn = false; log('Hands-free start failed: '+e.message); wakeState('err', 'Tap to start voice'); }
 }
 function stopWake(){ if (wakeRec){ wakeRec.onend = () => { wakeOn = false; }; try{ wakeRec.abort(); }catch(e){} } wakeOn = false; wakeState('off'); }
-$('#wakePill').addEventListener('click', e => {
+$('#jvToggle').addEventListener('click', e => {
   e.stopPropagation();
-  if (!cfg.wake){ cfg.wake = true; LS.set('cfg', cfg); toast('Hands-free on — say “Hey '+(cfg.wakeName||'Jarvis')+'”'); }
-  wakeBlocked = false; wakeErrs = 0; stopWake(); setTimeout(startWake, 150);
+  cfg.wake = !cfg.wake; LS.set('cfg', cfg);
+  wakeBlocked = false; wakeErrs = 0; stopWake();
+  if (cfg.wake){ toast('Jarvis is listening — say “Hey '+(cfg.wakeName||'Jarvis')+'”'); setTimeout(startWake, 150); }
+  else toast('Jarvis stopped');
 });
 // Chrome on Android may need a tap before the mic can start: retry on any touch
 document.addEventListener('pointerdown', () => { if (cfg.wake && !wakeOn && !listening){ wakeBlocked = false; startWake(); } }, true);
@@ -965,10 +984,10 @@ const ORD = {first:0,'1st':0,one:0,second:1,'2nd':1,two:1,third:2,'3rd':2,three:
 async function handleCommand(raw){
   const q = raw.toLowerCase().replace(/[’']/g,"'").replace(/[?.!]+$/,'').trim();
   showVoice('“'+raw+'”', '…');
-  log('Voice: '+raw);
+  log('Voice: '+raw); setHeard('You: “'+raw+'”');
   let a;
   try{ a = await answer(q); }catch(e){ a = 'Sorry, something went wrong: '+e.message; }
-  say(a);
+  say(a); setHeard('You: “'+raw+'” → '+a); setHeard.convoAt = Date.now();
 }
 function weatherFresh(){ return wx && wx._at && Date.now()-wx._at < 30*60000; }
 async function answer(q){
