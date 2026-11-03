@@ -62,10 +62,15 @@ For full privacy you can later self-host ntfy (the OnePlus 6T could do this).
   but sitting still doesn't.
 - Set a **PIN** (protects Disarm and Settings) and, if you like, an **auto-arm schedule** (e.g. 23:00–07:00).
 
+## Calendar
+
+To show today's Google Calendar events on the left, follow **[CALENDAR.md](CALENDAR.md)** (about 5 minutes, free).
+
 ## Voice assistant
 
 Tap the round 🎤 button (next to the clock) and speak. Replies are spoken and shown on screen. Try:
 
+- “What's on my calendar?” · “What's my next meeting?” · “What do I have tomorrow?”
 - “What's the temperature?” · “Will it snow tomorrow?” · “What's the forecast?”
 - “Read the news” · “Canada news” · “Read the second story”
 - “Start a 25 minute timer” · “How much time is left?” · “Pause the timer” · “Start a break”
