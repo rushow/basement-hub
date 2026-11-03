@@ -167,6 +167,12 @@ input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border
 #toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
   padding:8px 14px;border-radius:10px;font-size:13px;z-index:60;opacity:0;transition:opacity .3s;pointer-events:none}
 #toast.on{opacity:1}
+@media (orientation:landscape) and (max-height:380px){
+  #app{padding:6px;gap:6px} .col{gap:6px} .card{padding:8px 10px}
+  #newsList li{padding:4px 0} #newsList .h{-webkit-line-clamp:1;font-size:13px} #newsList .s{font-size:10.5px;margin-top:0}
+  .wx-days{margin-top:5px} .wx-day{padding:3px 4px} .card h2{margin-bottom:5px}
+  .ring{transform:scale(.8);margin:-7px} .focus-meta{display:none}
+}
 </style>
 </head>
 <body>
@@ -575,7 +581,9 @@ function renderSec(){
   const dot=$('#secDot'), st=$('#secState'), sub=$('#secSub'), btn=$('#armBtn');
   dot.className = 'dot';
   $('#camCard').classList.toggle('nocam', !cameraOk);
-  $('#camOff').textContent = cameraErr ? 'Camera off — '+cameraErr+'. Tap here or reload to retry.' : 'Starting camera…';
+  $('#camOff').textContent = (cameraErr==='waiting for permission' || cameraErr==='permission blocked')
+    ? 'Camera needs permission. Tap the icon left of the web address → Permissions → Camera → Allow, then tap here. (Also check Android Settings → Apps → Chrome → Permissions → Camera.)'
+    : cameraErr ? 'Camera off — '+cameraErr+'. Tap here to retry.' : 'Starting camera…';
   if (!cameraOk){ dot.classList.add('warn'); st.textContent='Camera off'; sub.textContent=' '; }
   else if (isArming()){ dot.classList.add('warn'); st.textContent='Arming '+Math.ceil((armAt-Date.now())/1000)+' s'; sub.textContent='Leave the room now'; }
   else if (isArmed()){ dot.classList.add('bad'); st.textContent='Armed'; sub.textContent = (inSchedule() && !armedManual ? 'Scheduled until '+cfg.schedTo+' · ' : '')+'Recording on motion'+(cfg.ntfyTopic?' + alerts':''); }
@@ -599,14 +607,16 @@ async function ensureCamera(){
   if (starting) return;
   if (stream && stream.getVideoTracks().some(t => t.readyState==='live')) return;
   starting = true;
+  const permTimer = setTimeout(() => { if (!cameraOk){ cameraErr = 'waiting for permission'; renderSec(); } }, 5000);
   try{
     stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:15, max:30}}});
     video.srcObject = stream; await video.play().catch(()=>{});
     const tr = stream.getVideoTracks()[0];
     tr.addEventListener('ended', () => { log('Camera track ended'); cameraOk=false; renderSec(); setTimeout(ensureCamera, 3000); });
     const s = tr.getSettings(); log('Camera on: '+(s.width||'?')+'×'+(s.height||'?')+' @'+(s.frameRate?Math.round(s.frameRate):'?')+'fps');
-    cameraOk = true; cameraErr = ''; prevGray = null;
+    cameraOk = true; cameraErr = ''; prevGray = null; clearTimeout(permTimer);
   }catch(e){
+    clearTimeout(permTimer);
     cameraOk=false; cameraErr = e.name==='NotAllowedError' ? 'permission blocked' : (e.message||e.name);
     log('Camera error: '+e.name+' '+e.message);
     setTimeout(()=>{ starting=false; ensureCamera(); }, 15000);
