@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0c1722">
+<title>Basement Hub</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+/* ---------- Matte sky-blue themes ---------- */
+:root{
+  --bg:#0c1722; --card:#13212e; --card2:#1a2c3c; --line:#22384b;
+  --text:#e4f0f8; --muted:#8fb0c6; --dim:#5d7a8f;
+  --accent:#7cc0e8; --accent-ink:#06202f; --ok:#5cc9a7; --bad:#f07070; --warn:#f2c46b;
+  --r:14px;
+}
+:root[data-theme="light"]{
+  --bg:#b9daee; --card:#e4f1f9; --card2:#d0e7f5; --line:#a6cbe2;
+  --text:#12324a; --muted:#3f6680; --dim:#7a9db4;
+  --accent:#2f8fca; --accent-ink:#ffffff; --ok:#1f9a72; --bad:#d64545; --warn:#c48a12;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;
+  user-select:none;-webkit-user-select:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:8px 12px;cursor:pointer}
+button:active{transform:scale(.97)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+button.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;width:100%;user-select:text;-webkit-user-select:text}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Layout ---------- */
+#app{position:fixed;inset:0;padding:10px;display:grid;gap:10px;
+  grid-template-columns:1fr 1fr 1.2fr;grid-template-rows:minmax(0,1fr);transition:transform 2s}
+@media (orientation:portrait){
+  #app{grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:max-content;align-content:start;overflow:auto}
+  #camCol{order:-1}
+  #camCol .camcard{flex:none;height:42vh}
+  .col>.card{flex-shrink:0}
+}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-height:0}
+.card h2{margin:0 0 8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.grow{flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* ---------- Clock + controls ---------- */
+.clockcard{display:flex;align-items:stretch;gap:8px}
+.clockcard .tm{flex:1;min-width:0}
+#clock{font-size:clamp(34px,min(6.3vw,13vh),84px);font-weight:300;line-height:.95;letter-spacing:-.02em;white-space:nowrap}
+#clock small{font-size:.35em;color:var(--muted);margin-left:5px;letter-spacing:0}
+#date{color:var(--muted);font-size:14px;margin-top:4px}
+.ctl{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
+.icons{display:flex;gap:0}
+.icons button{padding:2px 6px;font-size:15px;background:transparent;border:none;color:var(--dim)}
+#micBtn{width:52px;height:52px;border-radius:50%;padding:0;display:grid;place-items:center;
+  background:var(--accent);color:var(--accent-ink);border:none}
+#micBtn svg{width:24px;height:24px}
+#micBtn.live{background:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(240,112,112,.6)}100%{box-shadow:0 0 0 14px rgba(240,112,112,0)}}
+
+/* ---------- Weather ---------- */
+.wx-now{display:flex;align-items:center;gap:12px}
+.wx-icon{font-size:30px;line-height:1}
+.wx-temp{font-size:32px;font-weight:300;white-space:nowrap}
+.wx-meta{color:var(--muted);font-size:12.5px;line-height:1.35}
+.wx-days{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.wx-day{background:var(--card2);border-radius:10px;padding:5px 6px;text-align:center;font-size:12px;white-space:nowrap}
+.wx-day b{color:var(--muted);font-weight:500;font-size:11px}
+.wx-day .pp{color:var(--accent);font-size:10.5px}
+
+/* ---------- Countdowns ---------- */
+#countdowns{display:flex;flex-wrap:wrap;gap:6px}
+.cd{background:var(--card2);border-radius:10px;padding:4px 9px;font-size:12px}
+.cd b{color:var(--accent);font-size:14px;margin-right:4px}
+
+/* ---------- News ---------- */
+.seg{display:flex;gap:4px}
+.seg button{padding:3px 8px;font-size:11px;letter-spacing:0;text-transform:none}
+.seg button.on{border-color:var(--accent);color:var(--accent)}
+#newsList{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+#newsList li{padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px}
+#newsList li:last-child{border-bottom:none}
+#newsList .n{color:var(--accent);font-weight:600;font-size:15px;flex:none;width:14px}
+#newsList .h{font-size:13.5px;line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#newsList .s{color:var(--dim);font-size:11px;margin-top:2px}
+.empty{color:var(--dim);font-size:13px;padding:10px 0}
+
+/* ---------- Focus ---------- */
+.focus{display:flex;align-items:center;gap:12px}
+.ring{position:relative;width:72px;height:72px;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring .lbl{position:absolute;inset:0;display:grid;place-items:center;font-size:17px;font-weight:500}
+.focus-ctl{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.focus-ctl .seg button{flex:1;padding:4px;font-size:12px}
+.focus-meta{color:var(--muted);font-size:11.5px}
+.row{display:flex;gap:8px;align-items:center}
+
+/* ---------- Live camera panel ---------- */
+.camcard{position:relative;padding:0;overflow:hidden;background:#000;flex:1;min-height:0}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.camoff{position:absolute;inset:0;display:none;place-items:center;text-align:center;color:#9bb;padding:20px;font-size:14px}
+.camcard.nocam .camoff{display:grid}
+.chip{position:absolute;top:10px;display:flex;align-items:center;gap:8px;background:rgba(6,18,28,.62);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#eaf5fc;border-radius:999px;padding:6px 12px;font-size:13px}
+#stateChip{left:10px}
+#batChip{right:10px;font-size:12px}
+.dot{width:9px;height:9px;border-radius:50%;background:#7a8a96;flex:none}
+.dot.ok{background:#5cc9a7} .dot.bad{background:#f07070;box-shadow:0 0 8px #f07070} .dot.warn{background:#f2c46b}
+.rec{display:none;align-items:center;gap:6px;color:#ff8a8a;font-weight:600;font-size:12px}
+.rec.on{display:flex}
+.rec i{width:8px;height:8px;border-radius:50%;background:#f05050;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+.camfoot{position:absolute;left:0;right:0;bottom:0;padding:34px 10px 10px;
+  background:linear-gradient(transparent,rgba(4,12,20,.85));display:flex;align-items:flex-end;gap:8px}
+.camfoot .info{flex:1;color:#cfe3f0;font-size:12px;min-width:0}
+.camfoot .info b{display:block;font-size:13px;color:#fff;font-weight:600}
+.camfoot button{background:rgba(26,44,60,.85);border-color:rgba(124,192,232,.35);color:#eaf5fc}
+.camfoot button.primary{background:var(--accent);color:var(--accent-ink)}
+#meter{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.4)}
+#meter i{display:block;height:100%;width:0;background:#5cc9a7;transition:width .2s}
+
+/* ---------- Voice bubble ---------- */
+#voice{position:fixed;left:50%;bottom:14px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  width:min(620px,calc(100% - 24px));background:var(--card);border:1px solid var(--accent);border-radius:16px;
+  padding:12px 16px;z-index:30;transition:opacity .25s,transform .25s;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+#voice.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#voiceQ{color:var(--muted);font-size:13px;margin-bottom:4px;min-height:1em}
+#voiceA{font-size:16px;line-height:1.4}
+
+/* ---------- Saver, modals, toast ---------- */
+#saver{position:fixed;inset:0;background:#000;z-index:50;display:none}
+#saver.on{display:block}
+#saverClock{position:absolute;color:#1d2a33;font-size:28px;font-weight:300}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:40;display:none;align-items:center;justify-content:center;padding:12px}
+.modal.on{display:flex}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:16px;width:min(720px,100%);max-height:100%;
+  display:flex;flex-direction:column;overflow:hidden}
+.sheet header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.sheet header h3{margin:0;font-size:16px}
+.sheet .body{padding:12px 14px;overflow:auto}
+.sheet h4{margin:4px 0 8px;color:var(--accent)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.hint{font-size:11.5px;color:var(--dim);margin-top:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0}
+.switch input{width:auto;transform:scale(1.3)}
+#log{font:11px/1.4 ui-monospace,monospace;color:var(--muted);white-space:pre-wrap;max-height:140px;overflow:auto;background:var(--bg);border-radius:8px;padding:8px}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ev{background:var(--card2);border-radius:10px;overflow:hidden;font-size:12px}
+.ev img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.ev div{padding:6px 8px;display:flex;justify-content:space-between;color:var(--muted)}
+#player{width:100%;max-height:60vh;background:#000;border-radius:10px}
+#storyBody{font-size:15px;line-height:1.5}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin:6px 0 12px}
+.pin-dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--dim)}
+.pin-dots i.f{background:var(--accent);border-color:var(--accent)}
+.pinpad{display:grid;grid-template-columns:repeat(3,64px);gap:8px;justify-content:center}
+.pinpad button{height:52px;font-size:20px}
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
+  padding:8px 14px;border-radius:10px;font-size:13px;z-index:60;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Column 1: clock, weather, countdowns -->
+  <section class="col">
+    <div class="card clockcard">
+      <div class="tm">
+        <div id="clock" class="num">--:--</div>
+        <div id="date">&nbsp;</div>
+      </div>
+      <div class="ctl">
+        <div class="icons">
+          <button id="fsBtn" title="Full screen">⛶</button>
+          <button id="sleepBtn" title="Blank screen now">☾</button>
+          <button id="settingsBtn" title="Settings">⚙</button>
+        </div>
+        <button id="micBtn" title="Ask Hub" aria-label="Ask Hub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span id="wxPlace">Weather</span><span id="wxUpd" style="letter-spacing:0;text-transform:none;font-weight:400"></span></h2>
+      <div class="wx-now">
+        <div class="wx-icon" id="wxIcon">·</div>
+        <div class="wx-temp num" id="wxTemp">--°</div>
+        <div class="wx-meta" id="wxMeta">Loading…</div>
+      </div>
+      <div class="wx-days" id="wxDays"></div>
+    </div>
+    <div class="card" id="cdCard" hidden>
+      <h2>Countdowns</h2>
+      <div id="countdowns"></div>
+    </div>
+  </section>
+
+  <!-- Column 2: news, focus -->
+  <section class="col">
+    <div class="card grow">
+      <h2><span>Top news</span>
+        <span class="seg" id="newsSeg"><button data-s="sk">Sask</button><button data-s="ca">Canada</button></span></h2>
+      <ul id="newsList"><li class="empty">Loading headlines…</li></ul>
+      <div id="newsUpd" hidden></div>
+    </div>
+    <div class="card">
+      <h2>Focus</h2>
+      <div class="focus">
+        <div class="ring">
+          <svg width="72" height="72"><circle cx="36" cy="36" r="31" stroke="var(--line)" stroke-width="5" fill="none"/>
+            <circle id="ringArc" cx="36" cy="36" r="31" stroke-width="5" fill="none" stroke-linecap="round"
+              stroke-dasharray="194.8" stroke-dashoffset="0" style="stroke:var(--accent)"/></svg>
+          <div class="lbl num" id="focusTime">25:00</div>
+        </div>
+        <div class="focus-ctl">
+          <div class="seg" id="focusModes">
+            <button data-m="focus" class="on">Focus</button><button data-m="short">Break</button><button data-m="long">Long</button>
+          </div>
+          <div class="row"><button class="primary" id="focusGo" style="flex:1">Start</button><button id="focusReset">Reset</button></div>
+          <div class="focus-meta" id="focusMeta">0 sessions today</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Column 3: live camera -->
+  <section class="col" id="camCol">
+    <div class="card camcard" id="camCard">
+      <video id="cam" playsinline muted autoplay></video>
+      <div class="camoff" id="camOff">Starting camera…</div>
+      <div class="chip" id="stateChip"><span class="dot" id="secDot"></span><span id="secState">Starting…</span><span class="rec" id="recTag"><i></i>REC</span></div>
+      <div class="chip" id="batChip" hidden><span id="battery" class="num"></span></div>
+      <div class="camfoot">
+        <div class="info"><b id="secSub">&nbsp;</b><span id="lastMotion">No motion yet</span><span id="evCount" class="num"></span></div>
+        <button id="eventsBtn">Recordings</button>
+        <button class="primary" id="armBtn">Arm</button>
+      </div>
+      <div id="meter"><i></i></div>
+    </div>
+  </section>
+</div>
+
+<div id="voice"><div id="voiceQ"></div><div id="voiceA"></div></div>
+<div id="saver"><div id="saverClock" class="num"></div></div>
+<div id="toast"></div>
+
+<!-- Settings -->
+<div class="modal" id="settingsModal"><div class="sheet">
+  <header><h3>Settings</h3><div class="row"><button class="ghost" id="closeSettings" type="button">Cancel</button><button class="primary" id="saveSettings">Save</button></div></header>
+  <div class="body">
+    <h4>Look</h4>
+    <div class="two">
+      <div class="field"><label>Theme</label><select id="sTheme"><option value="dark">Sky blue — dark (best for always-on)</option><option value="light">Sky blue — light</option></select></div>
+      <div class="field"><label>Blank screen after (seconds without motion/touch)</label><input type="number" id="sIdle" min="10" max="3600"></div>
+    </div>
+
+    <h4>Voice assistant</h4>
+    <div class="switch"><span>Speak replies out loud</span><input type="checkbox" id="sSpeak"></div>
+    <div class="switch"><span>Hands-free: say “Hey Hub …” (experimental — Android may beep while listening)</span><input type="checkbox" id="sWake"></div>
+    <div class="field"><label>Speaking speed: <span id="sRateV"></span></label><input type="range" id="sRate" min="0.7" max="1.4" step="0.05"></div>
+
+    <h4>Alerts (ntfy — free)</h4>
+    <div class="two">
+      <div class="field"><label>ntfy server</label><input id="sServer"></div>
+      <div class="field"><label>Topic (keep it secret)</label><div class="row"><input id="sTopic"><button id="genTopic" type="button">New</button></div></div>
+    </div>
+    <div class="row" style="margin-bottom:14px"><button id="testAlert" type="button">Send test alert</button><span class="hint">Subscribe to the same topic in the ntfy app on your main phone.</span></div>
+
+    <h4>Camera &amp; motion</h4>
+    <div class="field"><label>Motion sensitivity: <span id="sSensV"></span></label><input type="range" id="sSens" min="1" max="100">
+      <div class="hint">Watch the thin bar at the bottom of the camera view: green = movement below the trigger, red = triggers.</div></div>
+    <div class="two">
+      <div class="field"><label>Clip length (seconds)</label><input type="number" id="sClip" min="3" max="60"></div>
+      <div class="field"><label>Alert cooldown (seconds)</label><input type="number" id="sCool" min="10" max="3600"></div>
+      <div class="field"><label>Exit delay when arming (seconds)</label><input type="number" id="sExit" min="0" max="300"></div>
+      <div class="field"><label>Keep at most (recordings)</label><input type="number" id="sMax" min="10" max="1000"></div>
+    </div>
+    <div class="switch"><span>Auto-arm on a schedule</span><input type="checkbox" id="sSched"></div>
+    <div class="two">
+      <div class="field"><label>From</label><input type="time" id="sFrom"></div>
+      <div class="field"><label>Until</label><input type="time" id="sTo"></div>
+    </div>
+    <div class="switch"><span>Alert if the phone is unplugged</span><input type="checkbox" id="sPower"></div>
+    <div class="field"><label>PIN to disarm &amp; open settings (blank = none)</label><input id="sPin" inputmode="numeric" maxlength="8"></div>
+
+    <h4>Dashboard</h4>
+    <div class="two">
+      <div class="field"><label>Weather place name</label><input id="sPlace"></div>
+      <div class="field"><label>Latitude, longitude</label><input id="sLatLon"></div>
+      <div class="field"><label>Focus minutes</label><input type="number" id="sFocus" min="5" max="120"></div>
+      <div class="field"><label>Break / long break minutes</label><input id="sBreaks" placeholder="5, 15"></div>
+    </div>
+    <div class="field"><label>Countdowns — one per line: YYYY-MM-DD Label</label><textarea id="sCd" rows="3" placeholder="2026-12-15 Journal submission"></textarea></div>
+
+    <h4>Diagnostics</h4>
+    <div id="log"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="reloadApp" type="button">Reload app</button>
+      <button class="danger" id="wipeEvents" type="button">Delete all recordings</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- Recordings -->
+<div class="modal" id="eventsModal"><div class="sheet">
+  <header><h3>Recordings</h3><button id="closeEvents">Close</button></header>
+  <div class="body">
+    <video id="player" controls playsinline hidden></video>
+    <div class="row" id="playerBar" hidden style="margin:8px 0 12px"><span id="playerInfo" style="flex:1;color:var(--muted);font-size:13px"></span><a id="dlLink"><button>Download</button></a></div>
+    <div class="events" id="eventsGrid"></div>
+  </div>
+</div></div>
+
+<!-- News story -->
+<div class="modal" id="storyModal"><div class="sheet">
+  <header><h3 id="storyTitle"></h3><button id="closeStory">Close</button></header>
+  <div class="body"><div id="storyMeta" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div><div id="storyBody"></div>
+    <div class="row" style="margin-top:12px"><button class="primary" id="readStory">Read aloud</button></div></div>
+</div></div>
+
+<!-- PIN -->
+<div class="modal" id="pinModal"><div class="sheet" style="width:auto">
+  <header><h3 id="pinTitle">Enter PIN</h3><button class="ghost" id="pinCancel">Cancel</button></header>
+  <div class="body"><div class="pin-dots" id="pinDots"></div><div class="pinpad" id="pinPad"></div></div>
+</div></div>
+
+<script>
+'use strict';
+/* ================= storage & helpers ================= */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('bh.'+k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('bh.'+k, JSON.stringify(v)); }catch(e){} }
+};
+const DEFAULTS = {
+  theme:'dark', speak:true, wake:false, rate:1.0,
+  ntfyServer:'https://ntfy.sh', ntfyTopic:'', sens:55, clipSec:10, cooldown:60, exitDelay:30, maxEvents:150,
+  sched:false, schedFrom:'23:00', schedTo:'07:00', powerAlert:true,
+  idleSec:90, pin:'', place:'Regina', lat:50.4452, lon:-104.6189, focusMin:25, shortMin:5, longMin:15,
+  newsSrc:'sk', countdowns:[]
+};
+let cfg = Object.assign({}, DEFAULTS, LS.get('cfg', {}));
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const logLines = [];
+function log(msg){
+  const t = new Date().toLocaleTimeString([], {hour12:false});
+  logLines.push(t+'  '+msg); if (logLines.length > 80) logLines.shift();
+  const el = $('#log'); if (el) el.textContent = logLines.slice().reverse().join('\n');
+}
+function toast(msg, ms=2500){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),ms); }
+function esc(s){ return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function fmtAgo(ts){
+  if(!ts) return '';
+  const s = Math.round((Date.now()-ts)/1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60)+' min ago';
+  if (s < 86400) return Math.floor(s/3600)+' h ago';
+  return new Date(ts).toLocaleDateString([], {month:'short', day:'numeric'});
+}
+function timeStr(d){ let h=d.getHours(), ap=h>=12?'PM':'AM'; h=h%12||12; return h+':'+pad(d.getMinutes())+' '+ap; }
+
+/* ================= clock ================= */
+function tickClock(){
+  const d = new Date(); let h = d.getHours(), ap = h>=12?'PM':'AM'; h = h%12||12;
+  $('#clock').innerHTML = h+':'+pad(d.getMinutes())+'<small>'+ap+'</small>';
+  $('#date').textContent = d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+  $('#saverClock').textContent = h+':'+pad(d.getMinutes());
+}
+
+/* ================= weather (Open-Meteo, free, no key) ================= */
+const WMO = {0:['☀️','Clear'],1:['🌤️','Mostly clear'],2:['⛅','Partly cloudy'],3:['☁️','Overcast'],45:['🌫️','Fog'],48:['🌫️','Icy fog'],
+  51:['🌦️','Light drizzle'],53:['🌦️','Drizzle'],55:['🌧️','Heavy drizzle'],56:['🌧️','Freezing drizzle'],57:['🌧️','Freezing drizzle'],
+  61:['🌧️','Light rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],66:['🌧️','Freezing rain'],67:['🌧️','Freezing rain'],
+  71:['🌨️','Light snow'],73:['🌨️','Snow'],75:['❄️','Heavy snow'],77:['🌨️','Snow grains'],80:['🌦️','Showers'],81:['🌧️','Showers'],
+  82:['⛈️','Violent showers'],85:['🌨️','Snow showers'],86:['❄️','Heavy snow showers'],95:['⛈️','Thunderstorm'],96:['⛈️','Storm with hail'],99:['⛈️','Storm with hail']};
+const wmo = c => WMO[c] || ['·','unknown conditions'];
+const deg = n => { const r = Math.round(n); return (r<0?'−'+(-r):r)+'°'; };
+const sayDeg = n => { const r = Math.round(n); return (r<0 ? 'minus '+(-r) : r)+' degrees'; };
+let wx = LS.get('wx', null);
+function renderWeather(){
+  const w = wx; if(!w || !w.current) return;
+  const c = w.current, d = w.daily, [ic, txt] = wmo(c.weather_code);
+  $('#wxPlace').textContent = cfg.place || 'Weather';
+  $('#wxIcon').textContent = c.is_day===0 && c.weather_code<=1 ? '🌙' : ic;
+  $('#wxTemp').textContent = deg(c.temperature_2m);
+  $('#wxMeta').innerHTML = txt+'<br>Feels '+deg(c.apparent_temperature)+' · Wind '+Math.round(c.wind_speed_10m)+' km/h'+
+    '<br>H '+deg(d.temperature_2m_max[0])+' · L '+deg(d.temperature_2m_min[0]);
+  let days = '';
+  for (let i=1;i<Math.min(4,d.time.length);i++){
+    const name = new Date(d.time[i]+'T12:00').toLocaleDateString([], {weekday:'short'});
+    const pp = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
+    days += '<div class="wx-day"><b>'+name+'</b> '+wmo(d.weather_code[i])[0]+(pp?' <span class="pp">'+pp+'%</span>':'')+'<br>'+
+      deg(d.temperature_2m_max[i])+' / '+deg(d.temperature_2m_min[i])+'</div>';
+  }
+  $('#wxDays').innerHTML = days;
+  $('#wxUpd').textContent = w._at ? 'updated '+fmtAgo(w._at) : '';
+}
+async function loadWeather(){
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude='+cfg.lat+'&longitude='+cfg.lon+
+    '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day'+
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4';
+  try{
+    const r = await fetch(url, {cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+    wx = await r.json(); wx._at = Date.now(); LS.set('wx', wx);
+  }catch(e){ log('Weather failed: '+e.message); }
+  renderWeather();
+}
+
+/* ================= news (CBC RSS) ================= */
+const FEEDS = {
+  sk:{name:'Saskatchewan', url:'https://www.cbc.ca/webfeed/rss/rss-canada-saskatchewan'},
+  ca:{name:'Canada', url:'https://www.cbc.ca/webfeed/rss/rss-canada'}
+};
+const news = {sk:LS.get('news.sk', null), ca:LS.get('news.ca', null)};
+function stripHtml(h){ const d = document.createElement('div'); d.innerHTML = h||''; d.querySelectorAll('img,script,style').forEach(n=>n.remove()); return (d.textContent||'').replace(/\s+/g,' ').trim(); }
+async function fetchFeed(url){
+  // 1) rss2json (free, CORS-enabled)
+  try{
+    const r = await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url), {cache:'no-store'});
+    const j = await r.json();
+    if (j.status === 'ok' && j.items && j.items.length)
+      return j.items.slice(0,6).map(i => ({title:i.title, link:i.link, date:Date.parse((i.pubDate||'').replace(' ','T')+'Z') || Date.now(), desc:stripHtml(i.description||i.content)}));
+    throw new Error(j.message || 'empty');
+  }catch(e){ log('News via rss2json failed: '+e.message); }
+  // 2) fallback: allorigins raw proxy + parse XML ourselves
+  const r = await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url), {cache:'no-store'});
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  const x = new DOMParser().parseFromString(await r.text(), 'text/xml');
+  const items = [...x.querySelectorAll('item')].slice(0,6).map(it => ({
+    title:(it.querySelector('title')||{}).textContent||'', link:(it.querySelector('link')||{}).textContent||'',
+    date:Date.parse((it.querySelector('pubDate')||{}).textContent||'')||Date.now(),
+    desc:stripHtml((it.querySelector('description')||{}).textContent||'')}));
+  if (!items.length) throw new Error('no items');
+  return items;
+}
+async function loadNews(src){
+  for (const s of (src ? [src] : ['sk','ca'])){
+    try{ const items = await fetchFeed(FEEDS[s].url); news[s] = {items, at:Date.now()}; LS.set('news.'+s, news[s]); }
+    catch(e){ log('News ('+s+') failed: '+e.message); }
+  }
+  renderNews();
+}
+function renderNews(){
+  document.querySelectorAll('#newsSeg button').forEach(b => b.classList.toggle('on', b.dataset.s===cfg.newsSrc));
+  const n = news[cfg.newsSrc], ul = $('#newsList');
+  if (!n || !n.items.length){ ul.innerHTML = '<li class="empty">Headlines unavailable right now.</li>'; $('#newsUpd').textContent=''; return; }
+  ul.innerHTML = n.items.slice(0,3).map((it,i) => '<li data-i="'+i+'"><span class="n">'+(i+1)+'</span><div><div class="h">'+esc(it.title)+'</div><div class="s">CBC '+FEEDS[cfg.newsSrc].name+' · '+fmtAgo(it.date)+'</div></div></li>').join('');
+  $('#newsUpd').textContent = 'Updated '+fmtAgo(n.at);
+}
+$('#newsSeg').addEventListener('click', e => { const s = e.target.dataset.s; if(!s) return; cfg.newsSrc = s; LS.set('cfg', cfg); renderNews(); });
+$('#newsList').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) openStory(cfg.newsSrc, Number(li.dataset.i)); });
+let storyNow = null;
+function openStory(src, i){
+  const it = news[src] && news[src].items[i]; if(!it) return;
+  storyNow = it;
+  $('#storyTitle').textContent = it.title;
+  $('#storyMeta').textContent = 'CBC '+FEEDS[src].name+' · '+new Date(it.date).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  $('#storyBody').textContent = it.desc || 'No summary available.';
+  $('#storyModal').classList.add('on');
+}
+$('#closeStory').onclick = () => { $('#storyModal').classList.remove('on'); speechSynthesis && speechSynthesis.cancel(); };
+$('#readStory').onclick = () => { if (storyNow) say(storyNow.title+'. '+(storyNow.desc||''), {force:true}); };
+
+/* ================= countdowns ================= */
+function countdownList(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  return (cfg.countdowns||[]).map(c => ({label:c.label, days:Math.round((new Date(c.date+'T00:00')-today)/86400000)}))
+    .filter(c => !isNaN(c.days) && c.days >= 0).sort((a,b)=>a.days-b.days);
+}
+function renderCountdowns(){
+  const items = countdownList();
+  $('#cdCard').hidden = !items.length;
+  $('#countdowns').innerHTML = items.map(c => '<div class="cd"><b class="num">'+(c.days===0?'Today':c.days)+'</b>'+
+    (c.days===0?'':c.days===1?'day · ':'days · ')+esc(c.label)+'</div>').join('');
+}
+
+/* ================= focus timer ================= */
+const focus = Object.assign({mode:'focus', running:false, endAt:0, remain:cfg.focusMin*60, total:cfg.focusMin*60}, LS.get('focus', {}));
+function modeMin(m){ return m==='focus'?cfg.focusMin : m==='short'?cfg.shortMin : cfg.longMin; }
+function sessionsToday(){ const s = LS.get('sessions', {}); return s[new Date().toDateString()] || 0; }
+function focusRemain(){ return focus.running ? Math.max(0, Math.round((focus.endAt-Date.now())/1000)) : focus.remain; }
+function renderFocus(){
+  const total = focus.total || modeMin(focus.mode)*60, rem = focusRemain();
+  $('#focusTime').textContent = Math.floor(rem/60)+':'+pad(rem%60);
+  const arc = $('#ringArc'); arc.style.strokeDashoffset = 194.8*(1-rem/total);
+  arc.style.stroke = focus.mode==='focus' ? 'var(--accent)' : 'var(--ok)';
+  $('#focusGo').textContent = focus.running ? 'Pause' : (rem<total ? 'Resume' : 'Start');
+  document.querySelectorAll('#focusModes button').forEach(b => b.classList.toggle('on', b.dataset.m===focus.mode));
+  const n = sessionsToday(); $('#focusMeta').textContent = n+' focus session'+(n===1?'':'s')+' today';
+  if (focus.running && rem<=0){
+    focus.running=false; focus.remain=0;
+    if (focus.mode==='focus'){ const s=LS.get('sessions',{}); const k=new Date().toDateString(); LS.set('sessions', {[k]:(s[k]||0)+1}); }
+    chime(); wake(); const msg = focus.mode==='focus' ? 'Focus session done. Time for a break.' : 'Break is over. Back to work.';
+    toast(msg, 6000); say(msg);
+    setMode(focus.mode==='focus' ? 'short' : 'focus');
+  }
+}
+function setMode(m, minutes){
+  focus.mode=m; focus.running=false; focus.total = (minutes || modeMin(m))*60; focus.remain = focus.total;
+  LS.set('focus', focus); renderFocus();
+}
+function startFocus(){ if (focus.remain<=0) focus.remain = focus.total; focus.endAt = Date.now()+focus.remain*1000; focus.running=true; LS.set('focus', focus); renderFocus(); }
+function pauseFocus(){ focus.remain = focusRemain(); focus.running=false; LS.set('focus', focus); renderFocus(); }
+$('#focusModes').addEventListener('click', e => { if(e.target.dataset.m) setMode(e.target.dataset.m); });
+$('#focusGo').onclick = () => focus.running ? pauseFocus() : startFocus();
+$('#focusReset').onclick = () => setMode(focus.mode);
+let actx;
+function chime(){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    [0,.25,.5].forEach((dt,i) => { const o=actx.createOscillator(), g=actx.createGain();
+      o.frequency.value=[660,880,1100][i]; o.connect(g); g.connect(actx.destination);
+      const t=actx.currentTime+dt; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.3,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+.4);
+      o.start(t); o.stop(t+.45); });
+  }catch(e){}
+}
+
+/* ================= screen: wake lock, blanking, pixel shift ================= */
+let wakeLock = null, lastActivity = Date.now(), saverOn = false;
+async function requestWakeLock(){
+  try{
+    if (!('wakeLock' in navigator)) { log('Wake Lock API not available'); return; }
+    if ((wakeLock && !wakeLock.released) || requestWakeLock.busy) return;
+    requestWakeLock.busy = true;
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => log('Wake lock released'));
+    log('Wake lock acquired');
+  }catch(e){ if (requestWakeLock.lastErr !== e.message) log('Wake lock failed: '+e.message); requestWakeLock.lastErr = e.message; }
+  requestWakeLock.busy = false;
+}
+function setSaver(on){ if (on === saverOn) return; saverOn = on; $('#saver').classList.toggle('on', on); if (on) moveSaverClock(); }
+function moveSaverClock(){ const c = $('#saverClock'); c.style.left = (5+Math.random()*70)+'vw'; c.style.top = (5+Math.random()*75)+'vh'; }
+function wake(){ lastActivity = Date.now(); setSaver(false); }
+['pointerdown','keydown'].forEach(ev => document.addEventListener(ev, () => { wake(); requestWakeLock(); }, {capture:true}));
+$('#saver').addEventListener('pointerdown', e => { e.stopPropagation(); wake(); });
+$('#sleepBtn').onclick = () => { lastActivity = 0; setSaver(true); };
+$('#fsBtn').onclick = () => { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(()=>{}); };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible'){ requestWakeLock(); ensureCamera(); } });
+setInterval(() => { const x=(Math.random()*6-3)|0, y=(Math.random()*6-3)|0; $('#app').style.transform='translate('+x+'px,'+y+'px)'; }, 180000);
+setInterval(() => { if (saverOn) moveSaverClock(); }, 60000);
+
+/* ================= security: arming ================= */
+let armedManual = LS.get('armed', false), armAt = LS.get('armAt', 0);
+function inSchedule(){
+  if (!cfg.sched) return false;
+  const now = new Date(), m = now.getHours()*60+now.getMinutes();
+  const [fh,fm] = cfg.schedFrom.split(':').map(Number), [th,tm] = cfg.schedTo.split(':').map(Number);
+  const f = fh*60+fm, t = th*60+tm;
+  return f<=t ? (m>=f && m<t) : (m>=f || m<t);
+}
+function isArmed(){ return (armedManual && Date.now()>=armAt) || inSchedule(); }
+function isArming(){ return armedManual && Date.now()<armAt; }
+function armNow(){ armedManual=true; armAt = Date.now()+cfg.exitDelay*1000; LS.set('armed', true); LS.set('armAt', armAt); renderSec(); }
+function disarmNow(){
+  armedManual=false; LS.set('armed', false);
+  if (inSchedule()) toast('The schedule keeps it armed until '+cfg.schedTo+'. Turn off the schedule in Settings to fully disarm.', 6000);
+  renderSec();
+}
+$('#armBtn').onclick = () => {
+  if (armedManual || inSchedule()) withPin('Disarm', disarmNow);
+  else { armNow(); toast(cfg.exitDelay ? 'Arming in '+cfg.exitDelay+' s' : 'Armed'); }
+};
+let cameraOk = false, cameraErr = '', recording = false;
+function renderSec(){
+  const dot=$('#secDot'), st=$('#secState'), sub=$('#secSub'), btn=$('#armBtn');
+  dot.className = 'dot';
+  $('#camCard').classList.toggle('nocam', !cameraOk);
+  $('#camOff').textContent = cameraErr ? 'Camera off — '+cameraErr+'. Tap here or reload to retry.' : 'Starting camera…';
+  if (!cameraOk){ dot.classList.add('warn'); st.textContent='Camera off'; sub.textContent=' '; }
+  else if (isArming()){ dot.classList.add('warn'); st.textContent='Arming '+Math.ceil((armAt-Date.now())/1000)+' s'; sub.textContent='Leave the room now'; }
+  else if (isArmed()){ dot.classList.add('bad'); st.textContent='Armed'; sub.textContent = (inSchedule() && !armedManual ? 'Scheduled until '+cfg.schedTo+' · ' : '')+'Recording on motion'+(cfg.ntfyTopic?' + alerts':''); }
+  else { dot.classList.add('ok'); st.textContent='Watching'; sub.textContent='Not recording'; }
+  $('#recTag').classList.toggle('on', recording);
+  const armedish = armedManual || inSchedule();
+  btn.textContent = armedish ? 'Disarm' : 'Arm'; btn.className = armedish ? '' : 'primary';
+  $('#lastMotion').textContent = lastMotionAt ? 'Last motion '+fmtAgo(lastMotionAt) : 'No motion yet';
+}
+$('#camOff').addEventListener('click', () => { if (!cameraOk){ starting=false; ensureCamera(); } });
+
+/* ================= camera + motion detection ================= */
+const video = $('#cam');
+let stream = null, starting = false, lastMotionAt = 0, lastFrameT = -1, stallCount = 0;
+const SW = 96, SH = 72;
+const scan = document.createElement('canvas'); scan.width=SW; scan.height=SH;
+const sctx = scan.getContext('2d', {willReadFrequently:true});
+let prevGray = null, prevMean = 0, hits = 0;
+function threshold(){ return 0.15 * Math.pow(0.02, (cfg.sens-1)/99); }
+async function ensureCamera(){
+  if (starting) return;
+  if (stream && stream.getVideoTracks().some(t => t.readyState==='live')) return;
+  starting = true;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:15, max:30}}});
+    video.srcObject = stream; await video.play().catch(()=>{});
+    const tr = stream.getVideoTracks()[0];
+    tr.addEventListener('ended', () => { log('Camera track ended'); cameraOk=false; renderSec(); setTimeout(ensureCamera, 3000); });
+    const s = tr.getSettings(); log('Camera on: '+(s.width||'?')+'×'+(s.height||'?')+' @'+(s.frameRate?Math.round(s.frameRate):'?')+'fps');
+    cameraOk = true; cameraErr = ''; prevGray = null;
+  }catch(e){
+    cameraOk=false; cameraErr = e.name==='NotAllowedError' ? 'permission blocked' : (e.message||e.name);
+    log('Camera error: '+e.name+' '+e.message);
+    setTimeout(()=>{ starting=false; ensureCamera(); }, 15000);
+  }
+  starting = false; renderSec();
+}
+function restartCamera(){ try{ stream && stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; cameraOk=false; ensureCamera(); }
+function analyse(){
+  if (!cameraOk || video.readyState < 2) return;
+  if (video.currentTime === lastFrameT){ if (++stallCount > 50){ log('Camera stalled — restarting'); stallCount=0; restartCamera(); } return; }
+  lastFrameT = video.currentTime; stallCount = 0;
+  sctx.drawImage(video, 0, 0, SW, SH);
+  const d = sctx.getImageData(0,0,SW,SH).data, n = SW*SH, g = new Uint8ClampedArray(n);
+  let sum = 0;
+  for (let i=0,j=0;i<n;i++,j+=4){ const v=(d[j]*77+d[j+1]*150+d[j+2]*29)>>8; g[i]=v; sum+=v; }
+  const mean = sum/n;
+  if (prevGray){
+    const shift = mean-prevMean; let changed = 0;
+    for (let i=0;i<n;i++){ if (Math.abs(g[i]-prevGray[i]-shift) > 22) changed++; }
+    const ratio = changed/n, thr = threshold(), m = $('#meter i');
+    m.style.width = Math.min(100, ratio/thr*50)+'%'; m.style.background = ratio>thr ? '#f07070' : '#5cc9a7';
+    hits = ratio > thr ? hits+1 : 0;
+    if (hits >= 2 || ratio > thr*4) onMotion(ratio);
+  }
+  prevGray = g; prevMean = mean;
+}
+let lastEventAt = 0;
+function onMotion(ratio){
+  const first = Date.now()-lastMotionAt > 5000;
+  lastMotionAt = Date.now();
+  if (!isArmed()){ wake(); if (first) log('Motion ('+(ratio*100).toFixed(1)+'%)'); return; }
+  if (!recording && Date.now()-lastEventAt > cfg.cooldown*1000){ lastEventAt = Date.now(); triggerEvent(ratio); }
+}
+
+/* ================= recording + storage (IndexedDB on the phone) ================= */
+let dbp = null;
+function db(){
+  return dbp = dbp || new Promise((res, rej) => {
+    const r = indexedDB.open('basementHub', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('events', {keyPath:'id'});
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function dbTx(mode, fn){ const d = await db(); return new Promise((res, rej) => { const tx = d.transaction('events', mode); let out; Promise.resolve(fn(tx.objectStore('events'))).then(v=>out=v); tx.oncomplete=()=>res(out); tx.onerror=()=>rej(tx.error); }); }
+function reqP(r){ return new Promise((res,rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function allEvents(){ return dbTx('readonly', st => reqP(st.getAll())).then(a => (a||[]).sort((x,y)=>y.t-x.t)); }
+async function putEvent(ev){ return dbTx('readwrite', st => { st.put(ev); }); }
+async function pruneEvents(){
+  const evs = await allEvents(); if (evs.length <= cfg.maxEvents) return;
+  const del = evs.slice(cfg.maxEvents).map(e=>e.id);
+  await dbTx('readwrite', st => { del.forEach(id => st.delete(id)); }); log('Pruned '+del.length+' old recordings');
+}
+let evCount = 0;
+async function countEvents(){ try{ evCount = await dbTx('readonly', st => reqP(st.count())); $('#evCount').textContent = evCount ? ' · '+evCount+' saved' : ''; }catch(e){} }
+function snapshot(){
+  return new Promise(res => {
+    const w = Math.min(960, video.videoWidth||640), h = Math.round(w*(video.videoHeight||480)/(video.videoWidth||640));
+    const c = document.createElement('canvas'); c.width=w; c.height=h; const x = c.getContext('2d');
+    x.drawImage(video,0,0,w,h);
+    x.fillStyle='rgba(0,0,0,.6)'; x.fillRect(0,h-26,w,26); x.fillStyle='#fff'; x.font='14px sans-serif';
+    x.fillText(new Date().toLocaleString(), 8, h-8);
+    c.toBlob(b => res(b), 'image/jpeg', 0.8);
+  });
+}
+function pickMime(){
+  if (!window.MediaRecorder) return null;
+  return ['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+}
+function recordClip(sec){
+  return new Promise(res => {
+    const mime = pickMime(); if (mime === null){ res(null); return; }
+    let rec; try{ rec = new MediaRecorder(stream, mime ? {mimeType:mime, videoBitsPerSecond:1500000} : undefined); }catch(e){ log('Recorder error: '+e.message); res(null); return; }
+    const chunks = []; rec.ondataavailable = e => e.data && e.data.size && chunks.push(e.data);
+    rec.onstop = () => res(chunks.length ? new Blob(chunks, {type: rec.mimeType || 'video/webm'}) : null);
+    rec.start(1000); setTimeout(() => { try{ rec.stop(); }catch(e){ res(null); } }, sec*1000);
+  });
+}
+async function triggerEvent(ratio){
+  recording = true; renderSec();
+  const t = Date.now(); log('ALARM: motion '+(ratio*100).toFixed(1)+'% — recording');
+  try{
+    const snap = await snapshot();
+    sendAlert('Motion detected in the basement', 'Motion at '+timeStr(new Date(t)), snap, 'rotating_light', 'high');
+    const clip = await recordClip(cfg.clipSec);
+    await putEvent({id:String(t), t, snap, clip, ratio});
+    await pruneEvents(); countEvents();
+  }catch(e){ log('Event save failed: '+e.message); }
+  recording = false; renderSec();
+}
+
+/* ================= alerts via ntfy ================= */
+async function sendAlert(title, message, imageBlob, tags, priority){
+  if (!cfg.ntfyTopic){ log('Alert skipped — no ntfy topic set'); return false; }
+  const base = cfg.ntfyServer.replace(/\/+$/,'')+'/'+encodeURIComponent(cfg.ntfyTopic);
+  const q = '?title='+encodeURIComponent(title)+'&message='+encodeURIComponent(message)+'&tags='+encodeURIComponent(tags||'')+'&priority='+(priority||'default');
+  try{
+    if (imageBlob){
+      const r = await fetch(base+q+'&filename=snapshot.jpg', {method:'PUT', body:imageBlob});
+      if (r.ok){ log('Alert sent with snapshot'); return true; }
+      log('Attachment rejected (HTTP '+r.status+') — sending text only');
+    }
+    const r2 = await fetch(base+q, {method:'POST', body:message});
+    log(r2.ok ? 'Alert sent' : 'Alert failed: HTTP '+r2.status); return r2.ok;
+  }catch(e){ log('Alert failed: '+e.message); return false; }
+}
+
+/* ================= battery / power ================= */
+let battery = null;
+async function watchBattery(){
+  if (!navigator.getBattery) return;
+  try{
+    battery = await navigator.getBattery();
+    const show = () => { $('#batChip').hidden = false; $('#battery').textContent = Math.round(battery.level*100)+'%'+(battery.charging?' ⚡':''); };
+    show(); battery.addEventListener('levelchange', show);
+    battery.addEventListener('chargingchange', () => { show();
+      log(battery.charging ? 'Power connected' : 'Power DISCONNECTED');
+      if (cfg.powerAlert) sendAlert(battery.charging ? 'Basement hub: power restored' : 'Basement hub: power disconnected',
+        'Battery at '+Math.round(battery.level*100)+'%', null, battery.charging ? 'electric_plug' : 'warning', battery.charging ? 'default' : 'high');
+    });
+  }catch(e){}
+}
+
+/* ================= voice assistant ================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let voices = [];
+function loadVoices(){ try{ voices = speechSynthesis.getVoices(); }catch(e){} }
+if ('speechSynthesis' in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function pickVoice(){
+  const en = voices.filter(v => /^en/i.test(v.lang));
+  return en.find(v => /en-CA/i.test(v.lang)) || en.find(v => /google/i.test(v.name) && /en-US/i.test(v.lang)) || en.find(v => /en-US/i.test(v.lang)) || en[0] || null;
+}
+let speaking = false;
+function say(text, opts={}){
+  showVoice(null, text);
+  if (!('speechSynthesis' in window) || (!cfg.speak && !opts.force)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/−/g,'minus ').replace(/°/g,' degrees'));
+    const v = pickVoice(); if (v){ u.voice = v; u.lang = v.lang; } else u.lang = 'en-CA';
+    u.rate = cfg.rate;
+    u.onstart = () => { speaking = true; };
+    u.onend = u.onerror = () => { speaking = false; hideVoiceSoon(); };
+    speechSynthesis.speak(u);
+  }catch(e){ log('Speech error: '+e.message); }
+}
+function showVoice(q, a){
+  const el = $('#voice'); el.classList.add('on');
+  if (q !== null && q !== undefined) $('#voiceQ').textContent = q;
+  if (a !== null && a !== undefined) $('#voiceA').textContent = a;
+  hideVoiceSoon();
+}
+function hideVoiceSoon(ms){ clearTimeout(showVoice._t); showVoice._t = setTimeout(() => { if (!speaking && !listening) $('#voice').classList.remove('on'); }, ms || 9000); }
+$('#voice').addEventListener('click', () => { $('#voice').classList.remove('on'); try{ speechSynthesis.cancel(); }catch(e){} });
+
+let rec = null, listening = false, wakeRec = null, wakeOn = false, awaitCmdUntil = 0;
+function listenOnce(){
+  if (!SR){ say('Voice recognition is not supported in this browser. Use Chrome on Android.', {force:true}); return; }
+  if (listening){ try{ rec.stop(); }catch(e){} return; }
+  stopWake();
+  try{ speechSynthesis.cancel(); }catch(e){}
+  rec = new SR(); rec.lang = 'en-CA'; rec.interimResults = true; rec.maxAlternatives = 1; rec.continuous = false;
+  let finalText = '';
+  rec.onstart = () => { listening = true; $('#micBtn').classList.add('live'); showVoice('Listening…', ''); };
+  rec.onresult = e => {
+    let interim = ''; for (let i=e.resultIndex;i<e.results.length;i++){ const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t; else interim += t; }
+    showVoice('“'+(finalText||interim)+'”', null);
+  };
+  rec.onerror = e => { log('Voice error: '+e.error); if (e.error==='not-allowed') say('Microphone permission is blocked. Allow it in Chrome site settings.', {force:true}); };
+  rec.onend = () => {
+    listening = false; $('#micBtn').classList.remove('live');
+    if (finalText.trim()) handleCommand(finalText.trim());
+    else { showVoice('', 'I didn’t hear anything. Tap the mic and try again.'); }
+    setTimeout(startWake, 1500);
+  };
+  try{ rec.start(); }catch(e){ log('Voice start failed: '+e.message); }
+}
+$('#micBtn').onclick = e => { e.stopPropagation(); listenOnce(); };
+
+// Hands-free "Hey Hub" (experimental)
+const WAKE_RE = /\b(hey|hi|ok|okay)\s+(hub|hubs|hob|hab|herb|hug|pub|bob)\b[,.!?]?\s*(.*)$/i;
+function startWake(){
+  if (!cfg.wake || !SR || wakeOn || listening || document.visibilityState!=='visible') return;
+  wakeRec = new SR(); wakeRec.lang = 'en-CA'; wakeRec.continuous = true; wakeRec.interimResults = false;
+  wakeRec.onresult = e => {
+    for (let i=e.resultIndex;i<e.results.length;i++){
+      if (!e.results[i].isFinal) continue;
+      const t = e.results[i][0].transcript.trim(); if (speaking) continue;
+      const m = t.match(WAKE_RE);
+      if (m){ wake(); if (m[3] && m[3].length > 2) handleCommand(m[3]); else { awaitCmdUntil = Date.now()+8000; chime(); showVoice('Listening…', ''); } }
+      else if (Date.now() < awaitCmdUntil){ awaitCmdUntil = 0; wake(); handleCommand(t); }
+    }
+  };
+  wakeRec.onerror = e => { if (e.error==='not-allowed'){ log('Hands-free: mic blocked'); cfg.wake=false; } };
+  wakeRec.onend = () => { wakeOn = false; if (cfg.wake && !listening) setTimeout(startWake, 400); };
+  try{ wakeRec.start(); wakeOn = true; }catch(e){ wakeOn = false; }
+}
+function stopWake(){ if (wakeRec){ wakeRec.onend = () => { wakeOn = false; }; try{ wakeRec.abort(); }catch(e){} } wakeOn = false; }
+
+const ORD = {first:0,'1st':0,one:0,second:1,'2nd':1,two:1,third:2,'3rd':2,three:2};
+async function handleCommand(raw){
+  const q = raw.toLowerCase().replace(/[’']/g,"'").replace(/[?.!]+$/,'').trim();
+  showVoice('“'+raw+'”', '…');
+  log('Voice: '+raw);
+  let a;
+  try{ a = await answer(q); }catch(e){ a = 'Sorry, something went wrong: '+e.message; }
+  say(a);
+}
+function weatherFresh(){ return wx && wx._at && Date.now()-wx._at < 30*60000; }
+async function answer(q){
+  const has = re => re.test(q);
+  // help
+  if (has(/\b(help|what can (you|i) (do|ask|say))\b/))
+    return 'You can ask: what\'s the temperature, will it snow tomorrow, what\'s the forecast, read the news, Canada news, read the second story, start a 25 minute timer, how much time is left, arm the camera, any motion, how many days until a countdown, what time is it, what is 15 times 4, or who is someone.';
+  // security
+  if (has(/\b(disarm|turn off (the )?(security|alarm|camera))\b/)){
+    if (!(armedManual || inSchedule())) return 'Security is already disarmed.';
+    if (cfg.pin){ withPin('Disarm', disarmNow); return 'For safety, please enter your PIN on the screen to disarm.'; }
+    disarmNow(); return 'Security disarmed.';
+  }
+  if (has(/\b(arm|activate|turn on)\b.*\b(security|alarm|camera|system)\b|^arm\b|\barm (it|now)\b/)){
+    if (isArmed() || isArming()) return 'Security is already '+(isArming()?'arming.':'armed.');
+    armNow(); return cfg.exitDelay ? 'Arming in '+cfg.exitDelay+' seconds. Please leave the room.' : 'Security armed.';
+  }
+  if (has(/\b(motion|anyone|anybody|security status|recordings?|camera status)\b/)){
+    const st = !cameraOk ? 'The camera is off.' : isArmed() ? 'Security is armed.' : isArming() ? 'Security is arming.' : 'Security is disarmed and watching.';
+    const lm = lastMotionAt ? ' Last motion was '+fmtAgo(lastMotionAt)+'.' : ' No motion detected since I started.';
+    return st+lm+(evCount ? ' There '+(evCount===1?'is 1 recording':'are '+evCount+' recordings')+' saved.' : '');
+  }
+  // focus timer
+  if (has(/\b(stop|pause)\b.*\b(timer|focus|pomodoro)\b/)){ if (!focus.running) return 'The timer isn\'t running.'; pauseFocus(); return 'Timer paused with '+fmtDur(focus.remain)+' left.'; }
+  if (has(/\b(reset|cancel)\b.*\b(timer|focus)\b/)){ setMode(focus.mode); return 'Timer reset.'; }
+  if (has(/\b(time left|remaining|how (much|long) (time )?(is )?left)\b/)){
+    const r = focusRemain(); return focus.running ? fmtDur(r)+' left in your '+(focus.mode==='focus'?'focus session.':'break.') : 'No timer is running. '+fmtDur(r)+' is set.';
+  }
+  if (has(/\b(start|set|begin|resume)\b.*\b(timer|focus|pomodoro|break|session)\b|\b(\d+)[ -]?min(ute)?s? timer\b/)){
+    const m = q.match(/(\d+)\s*(min|minute)/);
+    if (has(/\bresume\b/) && !focus.running){ startFocus(); return 'Resumed. '+fmtDur(focus.remain)+' to go.'; }
+    if (m){ setMode('focus', Math.min(240, Number(m[1]))); startFocus(); return 'Started a '+m[1]+' minute timer.'; }
+    if (has(/\blong break\b/)){ setMode('long'); startFocus(); return 'Long break started: '+cfg.longMin+' minutes.'; }
+    if (has(/\bbreak\b/)){ setMode('short'); startFocus(); return 'Break started: '+cfg.shortMin+' minutes.'; }
+    setMode('focus'); startFocus(); return 'Focus session started: '+cfg.focusMin+' minutes. Good luck.';
+  }
+  // countdowns
+  const cdm = q.match(/\b(how many days|how long|days) (until|till|til|to|left (until|for)?)\s+(the |my )?(.+)$/);
+  if (cdm){
+    const target = cdm[5].trim(), list = countdownList();
+    const words = target.split(/\s+/).filter(w => w.length > 2);
+    const hit = list.find(c => words.some(w => c.label.toLowerCase().includes(w)));
+    if (hit) return hit.days===0 ? hit.label+' is today.' : hit.days+' day'+(hit.days===1?'':'s')+' until '+hit.label+'.';
+    return list.length ? 'I don\'t have a countdown for '+target+'. Your countdowns are: '+list.map(c=>c.label).join(', ')+'.' : 'You have no countdowns yet. Add them in Settings.';
+  }
+  // news
+  const ordM = q.match(/\b(first|1st|one|second|2nd|two|third|3rd|three)\b/);
+  if (has(/\b(news|headline|headlines|stories|story|article)\b/)){
+    const src = has(/\b(canada|canadian|national)\b/) ? 'ca' : has(/\b(saskatchewan|regina|local|sask)\b/) ? 'sk' : cfg.newsSrc;
+    if (src !== cfg.newsSrc){ cfg.newsSrc = src; LS.set('cfg', cfg); renderNews(); }
+    if (!news[src] || Date.now()-news[src].at > 30*60000) await loadNews(src);
+    const n = news[src]; if (!n || !n.items.length) return 'Sorry, I can\'t reach the news right now.';
+    if (ordM && has(/\b(story|article|headline|more|read)\b/)){
+      const it = n.items[ORD[ordM[1]]]; if (!it) return 'There\'s no story number '+ordM[1]+'.';
+      return it.title+'. '+(it.desc || '');
+    }
+    return 'Top '+FEEDS[src].name+' headlines from CBC. '+n.items.slice(0,3).map((it,i)=>['One','Two','Three'][i]+': '+it.title+'.').join(' ')+' Say “read the first story” for more.';
+  }
+  // weather
+  if (has(/\b(weather|temperature|forecast|snow|snowing|rain|raining|cold|warm|hot|degrees|outside|wind|windy|jacket|umbrella)\b/)){
+    if (!weatherFresh()) await loadWeather();
+    if (!wx || !wx.current) return 'Sorry, I can\'t get the weather right now.';
+    const c = wx.current, d = wx.daily, place = cfg.place || 'outside';
+    const dayLine = i => {
+      const name = i===1 ? 'Tomorrow' : new Date(d.time[i]+'T12:00').toLocaleDateString([], {weekday:'long'});
+      const pp = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
+      return name+': '+wmo(d.weather_code[i])[1].toLowerCase()+', high of '+sayDeg(d.temperature_2m_max[i])+', low of '+sayDeg(d.temperature_2m_min[i])+(pp!=null?', '+pp+' percent chance of precipitation':'')+'.';
+    };
+    if (has(/\btomorrow\b/)) return dayLine(1);
+    if (has(/\b(forecast|this week|next few days|weekend|coming days)\b/)) return [1,2,3].filter(i=>i<d.time.length).map(dayLine).join(' ');
+    if (has(/\b(temperature|how cold|how warm|how hot|degrees)\b/))
+      return 'It\'s '+sayDeg(c.temperature_2m)+' in '+place+', feels like '+sayDeg(c.apparent_temperature)+'.';
+    const base = 'Right now in '+place+' it\'s '+sayDeg(c.temperature_2m)+' and '+wmo(c.weather_code)[1].toLowerCase()+', feels like '+sayDeg(c.apparent_temperature)+', with wind at '+Math.round(c.wind_speed_10m)+' kilometres per hour.';
+    const today = ' Today\'s high is '+sayDeg(d.temperature_2m_max[0])+' and the low is '+sayDeg(d.temperature_2m_min[0])+'.';
+    const tip = c.apparent_temperature <= -20 ? ' It\'s dangerously cold, dress warmly.' : c.apparent_temperature <= -5 && has(/jacket/) ? ' Yes, wear a warm jacket.' : '';
+    return base+today+tip;
+  }
+  // time & date
+  if (has(/\b(what time|the time|time is it)\b/)) return 'It\'s '+timeStr(new Date())+'.';
+  if (has(/\b(date|what day|which day|today's date)\b/)) return 'Today is '+new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric', year:'numeric'})+'.';
+  // screen
+  if (has(/\b(go to sleep|sleep|blank( the)? screen|screen off|turn off (the )?screen)\b/)){ setTimeout(() => { lastActivity = 0; setSaver(true); }, 2500); return 'Okay, blanking the screen.'; }
+  // math
+  const mm = q.replace(/\btimes\b|\bmultiplied by\b|x(?=\s*\d)/g,'*').replace(/\bdivided by\b|\bover\b/g,'/').replace(/\bplus\b/g,'+').replace(/\bminus\b/g,'-')
+    .match(/^(what is|what's|calculate|how much is)\s+([\d\s+\-*/().%]+)$/);
+  if (mm && /\d/.test(mm[2])){
+    try{ const v = Function('"use strict";return ('+mm[2].replace(/%/g,'/100')+')')(); if (isFinite(v)) return 'That\'s '+(Math.round(v*10000)/10000)+'.'; }catch(e){}
+  }
+  // greetings
+  if (has(/^(hi|hello|hey|good (morning|afternoon|evening))( there| hub)?$/)) return 'Hi! Ask me about the weather, news, a timer, or security.';
+  if (has(/\b(thank you|thanks)\b/)) return 'You\'re welcome.';
+  // general knowledge via Wikipedia
+  const wk = q.match(/^(who|what) (is|was|are|were) (a |an |the )?(.+)$|^tell me about (.+)$/);
+  if (wk){ const topic = (wk[4] || wk[5]).trim(); const s = await wiki(topic); if (s) return s; return 'Sorry, I couldn\'t find anything about '+topic+'.'; }
+  return 'Sorry, I didn\'t understand “'+q+'”. Try: what\'s the weather, read the news, or start a timer. Say “help” for more.';
+}
+function fmtDur(sec){ const m = Math.floor(sec/60), s = sec%60; return (m ? m+' minute'+(m===1?'':'s') : '')+(m && s ? ' and ' : '')+(s || !m ? s+' second'+(s===1?'':'s') : ''); }
+async function wiki(topic){
+  try{
+    const sr = await fetch('https://en.wikipedia.org/w/api.php?action=opensearch&limit=1&namespace=0&format=json&origin=*&search='+encodeURIComponent(topic)).then(r=>r.json());
+    const title = sr && sr[1] && sr[1][0]; if (!title) return null;
+    const j = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title.replace(/ /g,'_'))).then(r=>r.json());
+    if (!j.extract) return null;
+    const sentences = j.extract.match(/[^.!?]+[.!?]+/g) || [j.extract];
+    return sentences.slice(0,2).join(' ').trim()+' (From Wikipedia.)';
+  }catch(e){ log('Wikipedia failed: '+e.message); return null; }
+}
+
+/* ================= recordings viewer ================= */
+let urls = [];
+async function openEvents(){
+  urls.forEach(u => URL.revokeObjectURL(u)); urls = [];
+  $('#player').hidden = true; $('#playerBar').hidden = true;
+  const evs = await allEvents().catch(()=>[]);
+  const grid = $('#eventsGrid');
+  if (!evs.length) grid.innerHTML = '<div class="empty">No recordings yet. Clips are saved only while security is armed.</div>';
+  else grid.innerHTML = evs.map(e => { const u = e.snap ? URL.createObjectURL(e.snap) : ''; urls.push(u);
+    return '<div class="ev" data-id="'+e.id+'"><img src="'+u+'" alt=""><div><span>'+new Date(e.t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</span><span>'+(e.clip?'▶':'')+'</span></div></div>'; }).join('');
+  $('#eventsModal').classList.add('on');
+}
+$('#eventsGrid').addEventListener('click', async e => {
+  const el = e.target.closest('.ev'); if(!el) return;
+  const ev = (await allEvents()).find(x => x.id===el.dataset.id); if(!ev) return;
+  const p = $('#player'), u = URL.createObjectURL(ev.clip || ev.snap); urls.push(u);
+  if (ev.clip){ p.src = u; p.hidden = false; p.play().catch(()=>{}); } else p.hidden = true;
+  $('#playerBar').hidden = false; $('#playerInfo').textContent = new Date(ev.t).toLocaleString();
+  const ext = ev.clip ? ((ev.clip.type||'').includes('mp4') ? 'mp4' : 'webm') : 'jpg';
+  $('#dlLink').href = u; $('#dlLink').download = 'basement-'+ev.id+'.'+ext;
+});
+$('#eventsBtn').onclick = openEvents;
+$('#closeEvents').onclick = () => { $('#player').pause(); $('#eventsModal').classList.remove('on'); };
+
+/* ================= PIN ================= */
+let pinBuf = '', pinCb = null;
+function withPin(title, cb){
+  if (!cfg.pin){ cb(); return; }
+  pinBuf=''; pinCb=cb; $('#pinTitle').textContent = title+' — enter PIN'; drawPin(); $('#pinModal').classList.add('on');
+}
+function drawPin(){ $('#pinDots').innerHTML = Array.from({length:cfg.pin.length}, (_,i)=>'<i class="'+(i<pinBuf.length?'f':'')+'"></i>').join(''); }
+$('#pinPad').innerHTML = [1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].map(k=>'<button data-k="'+k+'">'+k+'</button>').join('');
+$('#pinPad').addEventListener('click', e => {
+  const k = e.target.dataset.k; if (k==null) return;
+  if (k==='⌫') pinBuf = pinBuf.slice(0,-1); else if (k!=='✓') pinBuf += k;
+  drawPin();
+  if (pinBuf.length >= cfg.pin.length || k==='✓'){
+    if (pinBuf === cfg.pin){ $('#pinModal').classList.remove('on'); const cb=pinCb; pinCb=null; cb && cb(); }
+    else if (pinBuf.length >= cfg.pin.length){ pinBuf=''; drawPin(); toast('Wrong PIN'); log('Wrong PIN entered'); }
+  }
+});
+$('#pinCancel').onclick = () => { pinCb=null; $('#pinModal').classList.remove('on'); };
+
+/* ================= settings ================= */
+function randTopic(){ const a = new Uint8Array(12); crypto.getRandomValues(a); return 'bhub-'+Array.from(a, b=>b.toString(36).padStart(2,'0')).join('').slice(0,20); }
+function fillSettings(){
+  $('#sTheme').value=cfg.theme; $('#sSpeak').checked=cfg.speak; $('#sWake').checked=cfg.wake; $('#sRate').value=cfg.rate; $('#sRateV').textContent=cfg.rate+'×';
+  $('#sServer').value=cfg.ntfyServer; $('#sTopic').value=cfg.ntfyTopic; $('#sSens').value=cfg.sens; $('#sSensV').textContent=cfg.sens;
+  $('#sClip').value=cfg.clipSec; $('#sCool').value=cfg.cooldown; $('#sExit').value=cfg.exitDelay; $('#sMax').value=cfg.maxEvents;
+  $('#sSched').checked=cfg.sched; $('#sFrom').value=cfg.schedFrom; $('#sTo').value=cfg.schedTo; $('#sPower').checked=cfg.powerAlert;
+  $('#sIdle').value=cfg.idleSec; $('#sPin').value=cfg.pin; $('#sPlace').value=cfg.place; $('#sLatLon').value=cfg.lat+', '+cfg.lon;
+  $('#sFocus').value=cfg.focusMin; $('#sBreaks').value=cfg.shortMin+', '+cfg.longMin;
+  $('#sCd').value=(cfg.countdowns||[]).map(c=>c.date+' '+c.label).join('\n');
+  $('#log').textContent = logLines.slice().reverse().join('\n');
+}
+function readSettings(){
+  const num = (id, d, lo, hi) => { const v = Number($(id).value); return $(id).value!=='' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+  const ll = $('#sLatLon').value.split(',').map(s=>Number(s.trim())), br = $('#sBreaks').value.split(',').map(s=>Number(s.trim()));
+  const oldLoc = cfg.lat+','+cfg.lon;
+  cfg = Object.assign(cfg, {
+    theme: $('#sTheme').value, speak: $('#sSpeak').checked, wake: $('#sWake').checked, rate: Number($('#sRate').value)||1,
+    ntfyServer: $('#sServer').value.trim() || DEFAULTS.ntfyServer, ntfyTopic: $('#sTopic').value.trim(),
+    sens: num('#sSens', 55, 1, 100), clipSec: num('#sClip', 10, 3, 60), cooldown: num('#sCool', 60, 10, 3600),
+    exitDelay: num('#sExit', 30, 0, 300), maxEvents: num('#sMax', 150, 10, 1000),
+    sched: $('#sSched').checked, schedFrom: $('#sFrom').value || '23:00', schedTo: $('#sTo').value || '07:00', powerAlert: $('#sPower').checked,
+    idleSec: num('#sIdle', 90, 10, 3600), pin: $('#sPin').value.replace(/\D/g,''),
+    place: $('#sPlace').value.trim(), lat: isFinite(ll[0]) ? ll[0] : cfg.lat, lon: isFinite(ll[1]) ? ll[1] : cfg.lon,
+    focusMin: num('#sFocus', 25, 5, 120), shortMin: br[0]>0 ? br[0] : 5, longMin: br[1]>0 ? br[1] : 15,
+    countdowns: $('#sCd').value.split('\n').map(l => l.trim().match(/^(\d{4}-\d{2}-\d{2})\s+(.+)$/)).filter(Boolean).map(m => ({date:m[1], label:m[2]}))
+  });
+  LS.set('cfg', cfg); applyCfg();
+  if (oldLoc !== cfg.lat+','+cfg.lon) loadWeather(); else renderWeather();
+  if (cfg.wake) startWake(); else stopWake();
+}
+function applyCfg(){
+  document.documentElement.dataset.theme = cfg.theme;
+  document.querySelector('meta[name=theme-color]').content = cfg.theme==='light' ? '#b9daee' : '#0c1722';
+  renderCountdowns(); renderSec(); renderNews(); if(!focus.running && focus.remain===focus.total) setMode(focus.mode);
+}
+$('#settingsBtn').onclick = () => withPin('Settings', () => { fillSettings(); $('#settingsModal').classList.add('on'); });
+$('#closeSettings').onclick = () => { $('#settingsModal').classList.remove('on'); cfg = Object.assign({}, DEFAULTS, LS.get('cfg', {})); applyCfg(); };
+$('#saveSettings').onclick = () => { readSettings(); $('#settingsModal').classList.remove('on'); toast('Saved'); };
+$('#sSens').oninput = e => { $('#sSensV').textContent = e.target.value; cfg.sens = Number(e.target.value); };
+$('#sRate').oninput = e => { $('#sRateV').textContent = e.target.value+'×'; };
+$('#sTheme').onchange = e => { document.documentElement.dataset.theme = e.target.value; };
+$('#genTopic').onclick = () => { $('#sTopic').value = randTopic(); };
+$('#testAlert').onclick = async () => {
+  const keep = cfg; cfg = Object.assign({}, cfg, {ntfyServer: $('#sServer').value.trim()||DEFAULTS.ntfyServer, ntfyTopic: $('#sTopic').value.trim()});
+  const snap = cameraOk ? await snapshot() : null;
+  const ok = await sendAlert('Basement hub test', 'If you can read this, alerts work.', snap, 'white_check_mark', 'default');
+  cfg = keep; toast(ok ? 'Test alert sent' : 'Test alert failed — see Diagnostics'); $('#log').textContent = logLines.slice().reverse().join('\n');
+};
+$('#reloadApp').onclick = () => location.reload();
+$('#wipeEvents').onclick = async () => { if (!confirm('Delete all recordings on this phone?')) return; await dbTx('readwrite', st => { st.clear(); }); countEvents(); toast('Recordings deleted'); };
+
+/* ================= main loops ================= */
+function everySecond(){
+  tickClock(); renderFocus();
+  const modalOpen = !!document.querySelector('.modal.on');
+  if (!saverOn && !modalOpen && !listening && !speaking){
+    if (Date.now()-lastActivity > cfg.idleSec*1000) setSaver(true);
+    else if (isArmed() && Date.now()-lastActivity > 15000) setSaver(true);   // stay dark while armed
+  }
+  if (isArming() || (Date.now()%10000) < 1000) renderSec();
+}
+function nightlyReload(){
+  const d = new Date(); if (d.getHours()===4 && d.getMinutes()===0 && !recording && performance.now() > 3600000) location.reload();
+}
+applyCfg(); tickClock(); renderFocus(); renderWeather(); countEvents();
+loadWeather(); setInterval(loadWeather, 15*60*1000);
+loadNews(); setInterval(() => loadNews(), 20*60*1000);
+setInterval(() => { renderNews(); renderWeather(); }, 60000);
+setInterval(everySecond, 1000); setInterval(nightlyReload, 30000); setInterval(analyse, 200);
+requestWakeLock(); ensureCamera(); watchBattery(); setTimeout(startWake, 2000);
+if (!SR) $('#micBtn').title = 'Voice not supported in this browser';
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(e => log('SW: '+e.message));
+log('Basement Hub started');
+window.__bh = {onMotion, isArmed, allEvents, answer, handleCommand, loadNews};   // for testing
+</script>
+</body>
+</html>
