@@ -91,8 +91,8 @@ Tap the round 🎤 button (next to the clock) and speak. Replies are spoken and 
 - “How many days until the journal submission?” (uses your countdowns)
 - “What time is it?” · “What is 15 times 4?” · “Who is Ada Lovelace?” (Wikipedia) · “Help”
 
-**Hands-free: “Hey Jarvis …”** — turn it on in ⚙ Settings → Voice assistant (you can change the wake word there).
-Say “Hey Jarvis, what's the weather?” in one go, or “Hey Jarvis”, wait for the chime, then ask.
+**Hands-free: “Hey Zeta …”** — turn it on in ⚙ Settings → Voice assistant (you can change the wake word there).
+Say “Hey Zeta, what's the weather?” in one go, or “Hey Zeta”, wait for the chime, then ask.
 It's experimental: Chrome on Android may play a short beep each time it restarts listening, so it's off by default.
 
 Speech recognition is done by Chrome (Google's free speech service), so it needs internet.

@@ -1,6 +1,6 @@
 // Basement Hub service worker: lets the app open even if Wi-Fi drops.
 // Bump VERSION whenever you change the app files.
-const VERSION = 'bh-v13';
+const VERSION = 'bh-v14';
 const SHELL = ['./', './index.html', './rv.js', './viewer.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
